@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VN Stock Signal Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E8EDF1; --panel:#F8FAFB; --ink:#17222D; --mut:#5B6B7A; --line:#CBD5DD;
+  --buy:#0E8A6D; --buy-bg:#DDF1EB; --sell:#C93A52; --sell-bg:#F8E2E6;
+  --zone:#C98A0B; --wave:#4B46B8; --acc:#243B6B; --chart:#FDFEFE;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #7B9AD6;outline-offset:2px}
+.mut{color:var(--mut)}
+.up{color:var(--buy)} .dn{color:var(--sell)}
+
+/* thanh trên */
+.top{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
+.tabs{display:flex;background:#DCE3E9;border-radius:12px;padding:3px}
+.tabs button{border:0;background:transparent;padding:8px 18px;border-radius:9px;font-weight:600;color:var(--mut);min-height:40px}
+.tabs button[aria-selected=true]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(23,34,45,.18)}
+.grow{flex:1}
+.src{font-size:13px;padding:5px 11px;border-radius:14px;background:#DCE3E9;color:var(--mut);white-space:nowrap}
+.src.live{background:var(--buy-bg);color:#0A6B54}
+.src.demo{background:#FBEBC9;color:#7A5300}
+.banner b{display:block;margin-bottom:2px}
+.banner{margin:10px 16px 0;padding:10px 14px;border-radius:10px;background:#FBEBC9;color:#6B4800;font-size:14px}
+
+main{padding:12px 16px 40px;max-width:1500px;margin:0 auto}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.chip{min-height:40px;padding:0 15px;border:1px solid var(--line);background:var(--panel);border-radius:20px;font-weight:500}
+.chip[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:#fff}
+.chip.sm{min-height:34px;padding:0 12px;font-size:14px}
+.sep{width:1px;height:26px;background:var(--line);margin:0 4px}
+.symin{min-height:40px;width:150px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--panel);font:inherit;font-weight:600;text-transform:uppercase}
+.go{min-height:40px;padding:0 16px;border-radius:10px;border:0;background:var(--acc);color:#fff;font-weight:600}
+.go.busy{opacity:.6;pointer-events:none}
+.upd{font-size:12.5px;color:var(--mut);white-space:nowrap}
+
+/* biểu đồ */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:12px;align-items:start}
+.chartWrap{position:relative;height:calc(100dvh - 200px);min-height:540px;background:var(--chart);border:1px solid var(--line);border-radius:12px;overflow:hidden;touch-action:none}
+canvas{display:block;width:100%;height:100%}
+.zoom{position:absolute;right:72px;top:8px;display:flex;gap:6px}
+.zoom button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:rgba(248,250,251,.92);font-size:20px;line-height:1}
+.aside{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h3{margin:0 0 8px;font-size:15px;font-weight:700}
+.card p{margin:6px 0}
+.pill{display:inline-block;padding:3px 11px;border-radius:14px;font-weight:700;font-size:14px}
+.pill.buy{background:var(--buy-bg);color:#0A6B54}
+.pill.sell{background:var(--sell-bg);color:#A02B40}
+.pill.wait{background:#E3E8EC;color:var(--mut)}
+.meter{display:inline-block;width:86px;height:8px;background:#DCE3E9;border-radius:4px;vertical-align:middle;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:4px}
+.meter.buy i{background:var(--buy)} .meter.sell i{background:var(--sell)} .meter.wait i{background:#9AA8B5}
+
+/* thẻ lý do: điểm nhấn của giao diện */
+.ticket{border-width:2px}
+.ticket.buy{border-color:var(--buy)} .ticket.sell{border-color:var(--sell)}
+.tk-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.tk-head b{font-size:18px}
+.lv{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;margin:10px 0;padding:10px;background:#EEF2F5;border-radius:8px;font-size:14px}
+.lv span:nth-child(3n+2){font-weight:600}
+.lv span:nth-child(3n){color:var(--mut);text-align:right}
+.why{list-style:none;margin:8px 0 0;padding:0}
+.why li{display:grid;grid-template-columns:48px 1fr;gap:8px;padding:9px 0;border-top:1px dashed var(--line);font-size:14px}
+.why .pts{font-weight:700;text-align:center;border-radius:8px;padding:2px 0;height:fit-content}
+.why .pts.p{background:var(--buy-bg);color:#0A6B54}
+.why .pts.m{background:var(--sell-bg);color:#A02B40}
+.why .tg{font-weight:600;display:block}
+.total{display:flex;justify-content:space-between;padding-top:9px;border-top:2px solid var(--ink);font-weight:700;margin-top:2px}
+.res{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:14px;font-weight:600}
+.res.win{background:var(--buy-bg);color:#0A6B54} .res.loss{background:var(--sell-bg);color:#A02B40} .res.flat{background:#E3E8EC;color:var(--mut)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:14px}
+.kv b{text-align:right}
+.note{font-size:13px;color:var(--mut);margin-top:8px}
+.list{list-style:none;margin:0;padding:0}
+.list button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;border:0;background:transparent;padding:9px 4px;border-top:1px solid var(--line);min-height:44px}
+.list li:first-child button{border-top:0}
+.list button[aria-current=true]{background:#E3EAF6;border-radius:8px}
+
+/* danh sách lọc */
+.rows{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:grid;grid-template-columns:190px minmax(0,1fr) 200px;gap:14px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:var(--panel);padding:13px 16px;min-height:76px}
+.row:last-child{border-bottom:0}
+.row:hover{background:#F0F4F7}
+.row .sym b{font-size:17px}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.tg2{font-size:12.5px;padding:2px 8px;border-radius:10px;font-weight:600}
+.tg2.buy{background:var(--buy-bg);color:#0A6B54} .tg2.sell{background:var(--sell-bg);color:#A02B40} .tg2.neu{background:#E3E8EC;color:var(--mut)}
+.badge{display:inline-block;font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:10px;margin-top:4px}
+.badge.ok{background:var(--buy-bg);color:#0A6B54} .badge.no{background:var(--sell-bg);color:#A02B40} .badge.few{background:#E3E8EC;color:var(--mut)}
+.empty{padding:36px 16px;text-align:center;color:var(--mut)}
+.prog{height:6px;background:#DCE3E9;border-radius:3px;overflow:hidden;margin:4px 0 10px}
+.prog i{display:block;height:100%;background:var(--acc);transition:width .25s}
+.foot{margin:18px 2px 0;font-size:13px;color:var(--mut)}
+[hidden]{display:none!important}
+
+@media (max-width:1060px){
+  .grid{grid-template-columns:1fr}
+  .chartWrap{height:64dvh;min-height:480px}
+  .row{grid-template-columns:1fr;gap:6px}
+}
+@media (max-width:640px){
+  .top{flex-wrap:wrap;gap:8px} .brand{font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">VN Stock Signal Scanner</div>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tabChart" aria-selected="true">Biểu đồ</button>
+    <button role="tab" id="tabScan" aria-selected="false">Bộ lọc</button>
+  </div>
+  <div class="grow"></div>
+  <span class="upd" id="upd"></span>
+  <button class="go" id="refresh" title="Tải lại dữ liệu mới nhất và tính lại dự báo">⟳ Làm mới</button>
+  <span class="src" id="src">Đang kết nối…</span>
+</header>
+<div class="banner" id="banner" hidden><b>Không tải được dữ liệu giá thật.</b> Không tải được dữ liệu giá từ thư mục data/ của trang<span id="errWhy"></span>. Hãy mở qua link GitHub Pages (hoặc chạy máy chủ cục bộ), không mở trực tiếp file từ máy. <button class="chip sm" id="retry" style="margin-left:6px">Thử kết nối lại</button></div>
+
+<main>
+  <!-- BIỂU ĐỒ -->
+  <section id="viewChart">
+    <div class="bar">
+      <input class="symin" id="symIn" list="symList" value="VCB" aria-label="Mã cổ phiếu Việt Nam" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <datalist id="symList"></datalist>
+      <button class="go" id="symGo">Xem</button>
+      <span class="sep"></span>
+      <span id="tfChart"></span>
+    </div>
+    <div class="bar" id="layers"></div>
+    <div class="grid">
+      <div class="chartWrap" id="wrap">
+        <canvas id="cv"></canvas>
+        <div class="zoom"><button id="zOut" aria-label="Thu nhỏ">−</button><button id="zIn" aria-label="Phóng to">+</button></div>
+      </div>
+      <div class="aside" id="aside"></div>
+    </div>
+  </section>
+
+  <!-- BỘ LỌC -->
+  <section id="viewScan" hidden>
+    <div class="bar">
+      <span id="tfScan"></span>
+      <span class="sep"></span>
+      <button class="chip" data-f="all" aria-pressed="true">Tất cả</button>
+      <button class="chip" data-f="buy" aria-pressed="false">Dự báo tăng</button>
+      <button class="chip" data-f="sell" aria-pressed="false">Dự báo giảm</button>
+      <button class="chip" id="onlyPos" aria-pressed="false">Chỉ mã backtest dương</button>
+      <button class="chip" id="onlyWy" aria-pressed="false">Có cấu trúc Wyckoff</button>
+      <span class="grow"></span>
+      <button class="go" id="rescan">Quét lại</button>
+    </div>
+    <div class="bar" id="secBar" style="flex-wrap:wrap"></div>
+    <div class="prog" id="prog" hidden><i></i></div>
+    <div class="rows" id="rows"></div>
+  </section>
+
+  <p class="foot">Dữ liệu cổ phiếu Việt Nam lấy qua thư viện vnstock, tính theo nghìn đồng, có thể trễ và được làm mới theo lịch của workflow (khoảng 10:30 và 15:30 các ngày giao dịch). Thị trường không bán khống nên tín hiệu giảm nên đọc là cảnh báo/thoát hàng; thống kê backtest vẫn mô phỏng cả hai chiều, phí tính ~0,4% khứ hồi. Công cụ hỗ trợ phân tích, không phải lời khuyên đầu tư. Dự báo gom từ MACD, KDJ, StochRSI, Bollinger, Ichimoku, Fibonacci, vùng giá, Elliott, volume và xu hướng EMA; đây là kịch bản ước tính cho các nến sắp tới, chưa xảy ra. Tín hiệu chỉ là xác suất, không có chỉ báo nào dự báo chắc chắn. Backtest giả định khớp lệnh tại giá đóng cửa nến tín hiệu, phí 0,1% mỗi chiều, nếu cùng một nến chạm cả cắt lỗ và chốt lời thì tính là thua.</p>
+</main>
+
+<script>
+'use strict';
+/* =====================================================================
+   ENGINE: chỉ báo, vùng giá, sóng Elliott, tín hiệu + lý do, backtest
+   Mọi tính toán dùng dữ liệu nến đã đóng, không nhìn trước tương lai.
+   ===================================================================== */
+const NaNs = n => new Array(n).fill(NaN);
+const isN = v => typeof v === 'number' && !isNaN(v);
+
+function fmt(p) {
+  if (!isFinite(p)) return '–';
+  const a = Math.abs(p);
+  const d = a >= 1 ? 2 : a >= 0.1 ? 4 : 6;
+  return p.toFixed(d);
+}
+
+function sma(a, n) {
+  const o = NaNs(a.length);
+  for (let i = n - 1; i < a.length; i++) {
+    let s = 0, ok = true;
+    for (let j = i - n + 1; j <= i; j++) {
+      const v = a[j];
+      if (!isN(v)) { ok = false; break; }
+      s += v;
+    }
+    if (ok) o[i] = s / n;
+  }
+  return o;
+}
+
+function ema(a, n) {
+  const out = NaNs(a.length), k = 2 / (n + 1);
+  let cnt = 0, sum = 0, prev = NaN;
+  for (let i = 0; i < a.length; i++) {
+    const v = a[i];
+    if (!isN(v)) continue;
+    if (!isN(prev)) {
+      cnt++; sum += v;
+      if (cnt === n) { prev = sum / n; out[i] = prev; }
+    } else {
+      prev = v * k + prev * (1 - k);
+      out[i] = prev;
+    }
+  }
+  return out;
+}
+
+function rsiW(c, n) {
+  const out = NaNs(c.length);
+  if (c.length <= n) return out;
+  let g = 0, l = 0;
+  for (let i = 1; i <= n; i++) {
+    const d = c[i] - c[i - 1];
+    g += Math.max(d, 0); l += Math.max(-d, 0);
+  }
+  g /= n; l /= n;
+  out[n] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+  for (let i = n + 1; i < c.length; i++) {
+    const d = c[i] - c[i - 1];
+    g = (g * (n - 1) + Math.max(d, 0)) / n;
+    l = (l * (n - 1) + Math.max(-d, 0)) / n;
+    out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+  }
+  return out;
+}
+
+function atrW(h, l, c, n) {
+  const o = NaNs(h.length);
+  if (h.length <= n) return o;
+  const tr = [0];
+  for (let i = 1; i < h.length; i++) {
+    tr[i] = Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1]));
+  }
+  let s = 0;
+  for (let i = 1; i <= n; i++) s += tr[i];
+  let a = s / n; o[n] = a;
+  for (let i = n + 1; i < h.length; i++) { a = (a * (n - 1) + tr[i]) / n; o[i] = a; }
+  return o;
+}
+
+function calcInd(o, h, l, c, v) {
+  const n = c.length;
+  const e12 = ema(c, 12), e26 = ema(c, 26);
+  const macd = e12.map((x, i) => x - e26[i]);
+  const sig = ema(macd, 9);
+  const hist = macd.map((x, i) => x - sig[i]);
+
+  // KDJ (14,3,3)
+  const K = NaNs(n), D = NaNs(n), J = NaNs(n);
+  let pk = 50, pd = 50;
+  for (let i = 13; i < n; i++) {
+    let hh = -Infinity, ll = Infinity;
+    for (let j = i - 13; j <= i; j++) { if (h[j] > hh) hh = h[j]; if (l[j] < ll) ll = l[j]; }
+    const rsv = hh === ll ? 50 : (c[i] - ll) / (hh - ll) * 100;
+    pk = pk * 2 / 3 + rsv / 3;
+    pd = pd * 2 / 3 + pk / 3;
+    K[i] = pk; D[i] = pd; J[i] = 3 * pk - 2 * pd;
+  }
+
+  // Stochastic RSI (14,14,3,3)
+  const rsi = rsiW(c, 14);
+  const st = NaNs(n);
+  for (let i = 27; i < n; i++) {
+    let mn = Infinity, mx = -Infinity, ok = true;
+    for (let j = i - 13; j <= i; j++) {
+      if (!isN(rsi[j])) { ok = false; break; }
+      if (rsi[j] < mn) mn = rsi[j];
+      if (rsi[j] > mx) mx = rsi[j];
+    }
+    if (ok) st[i] = mx === mn ? 50 : (rsi[i] - mn) / (mx - mn) * 100;
+  }
+  const sk = sma(st, 3), sd = sma(sk, 3);
+
+  // Bollinger Bands (20, 2)
+  const bbMid = sma(c, 20), bbUp = NaNs(n), bbLo = NaNs(n), bbBw = NaNs(n);
+  for (let i = 19; i < n; i++) {
+    let s = 0;
+    for (let j = i - 19; j <= i; j++) s += (c[j] - bbMid[i]) * (c[j] - bbMid[i]);
+    const sd = Math.sqrt(s / 20);
+    bbUp[i] = bbMid[i] + 2 * sd; bbLo[i] = bbMid[i] - 2 * sd;
+    bbBw[i] = bbMid[i] ? (bbUp[i] - bbLo[i]) / bbMid[i] : NaN;
+  }
+
+  // Ichimoku 1 (9,17,26) cho Kumo; Ichimoku 2 (65,129,52) cho đường dài hạn
+  const mid = (p, i) => { let a = -Infinity, b = Infinity; for (let j = i - p + 1; j <= i; j++) { if (h[j] > a) a = h[j]; if (l[j] < b) b = l[j]; } return (a + b) / 2; };
+  const tenkan = NaNs(n), kijun = NaNs(n), spanA = NaNs(n + 26), spanB = NaNs(n + 26);
+  const tenkanLong = NaNs(n), kijunLong = NaNs(n);
+  for (let i = 0; i < n; i++) {
+    if (i >= 8) tenkan[i] = mid(9, i);
+    if (i >= 16) { kijun[i] = mid(17, i); spanA[i + 26] = (tenkan[i] + kijun[i]) / 2; }
+    if (i >= 64) tenkanLong[i] = mid(65, i);
+    if (i >= 128) kijunLong[i] = mid(129, i);
+    if (i >= 25) spanB[i + 26] = mid(26, i);
+  }
+
+  return {
+    tenkan, kijun, spanA, spanB, tenkanLong, kijunLong,
+    ema50: ema(c, 50), ema200: ema(c, 200),
+    bbMid, bbUp, bbLo, bbBw,
+    macd, sig, hist, K, D, J, rsi, sk, sd,
+    atr: atrW(h, l, c, 14), volSma: sma(v, 20)
+  };
+}
+
+/* ---------- Vùng hỗ trợ / kháng cự từ đỉnh đáy fractal ---------- */
+function fractals(h, l, n = 5) {
+  const out = [];
+  for (let j = n; j < h.length - n; j++) {
+    let isH = true, isL = true;
+    for (let k = 1; k <= n; k++) {
+      if (h[j] <= h[j - k] || h[j] < h[j + k]) isH = false;
+      if (l[j] >= l[j - k] || l[j] > l[j + k]) isL = false;
+      if (!isH && !isL) break;
+    }
+    if (isH) out.push({ j, p: h[j], conf: j + n, t: 'H' });
+    if (isL) out.push({ j, p: l[j], conf: j + n, t: 'L' });
+  }
+  return out;
+}
+
+function zonesAt(piv, i, atrI, maxBack = 300) {
+  if (!isN(atrI)) return [];
+  const ps = [];
+  for (const q of piv) {
+    if (q.conf > i) break;
+    if (q.j >= i - maxBack) ps.push(q);
+  }
+  ps.sort((a, b) => a.p - b.p);
+  const tol = 0.7 * atrI;
+  const zs = [];
+  let cur = null;
+  for (const q of ps) {
+    if (cur && q.p - cur.max <= tol && q.p - cur.min <= 3 * tol) {
+      cur.max = q.p; cur.n++; cur.sum += q.p;
+    } else {
+      if (cur) zs.push(cur);
+      cur = { min: q.p, max: q.p, n: 1, sum: q.p };
+    }
+  }
+  if (cur) zs.push(cur);
+  return zs.filter(z => z.n >= 2).map(z => ({
+    lo: z.min - 0.1 * atrI, hi: z.max + 0.1 * atrI, mid: z.sum / z.n, touches: z.n
+  }));
+}
+
+/* ---------- ZigZag theo ATR (nền cho Elliott) ---------- */
+function zigzag(h, l, atr, k) {
+  const piv = [];
+  let dir = 0, hi = NaN, hiI = -1, lo = NaN, loI = -1;
+  for (let i = 0; i < h.length; i++) {
+    if (!isN(atr[i])) continue;
+    if (hiI < 0) { hi = h[i]; hiI = i; lo = l[i]; loI = i; continue; }
+    const th = k * atr[i];
+    if (dir === 0) {
+      if (h[i] > hi) { hi = h[i]; hiI = i; }
+      if (l[i] < lo) { lo = l[i]; loI = i; }
+      if (h[i] - lo >= th && loI < i) {
+        piv.push({ j: loI, p: lo, t: 'L', conf: i }); dir = 1; hi = h[i]; hiI = i;
+      } else if (hi - l[i] >= th && hiI < i) {
+        piv.push({ j: hiI, p: hi, t: 'H', conf: i }); dir = -1; lo = l[i]; loI = i;
+      }
+    } else if (dir === 1) {
+      if (h[i] > hi) { hi = h[i]; hiI = i; }
+      else if (hi - l[i] >= th) {
+        piv.push({ j: hiI, p: hi, t: 'H', conf: i }); dir = -1; lo = l[i]; loI = i;
+      }
+    } else {
+      if (l[i] < lo) { lo = l[i]; loI = i; }
+      else if (h[i] - lo >= th) {
+        piv.push({ j: loI, p: lo, t: 'L', conf: i }); dir = 1; hi = h[i]; hiI = i;
+      }
+    }
+  }
+  const tent = dir === 1 ? { j: hiI, p: hi, t: 'H' } : dir === -1 ? { j: loI, p: lo, t: 'L' } : null;
+  return { piv, tent };
+}
+
+/* ---------- Elliott: nhận diện sóng đẩy 5 sóng theo các quy tắc cứng ---------- */
+function checkImpulse(pts, full) {
+  const sign = pts[0].t === 'L' ? 1 : -1;
+  const x = pts.map(q => q.p * sign);
+  const w1 = x[1] - x[0], w3 = x[3] - x[2];
+  const w2r = (x[1] - x[2]) / w1, w4r = (x[3] - x[4]) / w3;
+  if (!(w1 > 0 && x[2] > x[0] && x[2] < x[1] && w2r >= 0.2 &&
+        x[3] > x[1] && x[4] > x[1] && x[4] < x[3] && w4r >= 0.15 && w4r <= 0.786)) return null;
+  if (full) {
+    if (!(x[5] > x[4])) return null;
+    const w5 = x[5] - x[4];
+    if (w3 < w1 && w3 < w5) return null;
+    return { sign, w1, w3, w5, w2r, w4r, full: true };
+  }
+  if (w3 < w1) return null;
+  return { sign, w1, w3, w2r, w4r, full: false, target: (x[4] + w1) * sign };
+}
+
+function ewText(ev) {
+  const r = ev.r, up = r.sign > 0, dir = up ? 'tăng' : 'giảm';
+  if (ev.kind === 'w5') {
+    return `Elliott: cấu trúc sóng 1-2-3-4 ${dir} hợp lệ. Sóng 2 hồi ${Math.round(r.w2r * 100)}% sóng 1, ` +
+      `sóng 3 dài ${(r.w3 / r.w1).toFixed(2)} lần sóng 1, sóng 4 hồi ${Math.round(r.w4r * 100)}% sóng 3 ` +
+      `và không chồng lên sóng 1. Kỳ vọng sóng 5 ${dir}, mục tiêu tham khảo ~${fmt(ev.target)}`;
+  }
+  return `Elliott: 5 sóng ${dir} có vẻ đã hoàn tất (sóng 3 không phải sóng ngắn nhất, sóng 4 không chồng sóng 1). ` +
+    `Sau đó thường có nhịp điều chỉnh A-B-C ngược chiều, nên ${ev.side === 'buy' ? 'canh mua đảo chiều' : 'chốt lời hoặc canh bán'}`;
+}
+
+function elliottEvents(piv) {
+  const ev = [];
+  for (let k = 4; k < piv.length; k++) {
+    if (k >= 5) {
+      const pts = piv.slice(k - 5, k + 1);
+      const r = checkImpulse(pts, true);
+      if (r) ev.push({ kind: 'done', i: piv[k].conf, pts, r, side: r.sign > 0 ? 'sell' : 'buy' });
+    }
+    const p5 = piv.slice(k - 4, k + 1);
+    const r5 = checkImpulse(p5, false);
+    if (r5) ev.push({ kind: 'w5', i: piv[k].conf, pts: p5, r: r5, side: r5.sign > 0 ? 'buy' : 'sell', target: r5.target });
+  }
+  ev.forEach(e => { e.text = ewText(e); });
+  return ev;
+}
+
+/* ---------- Fibonacci: lấy nhịp sóng gần nhất đã xác nhận từ ZigZag ---------- */
+function fibSwing(piv, i, atr) {
+  let k = piv.length - 1;
+  while (k >= 0 && piv[k].conf > i) k--;
+  if (k < 1 || !isN(atr)) return null;
+  const b = piv[k], a = piv[k - 1];
+  if (Math.abs(b.p - a.p) < 3 * atr) return null;
+  const up = b.t === 'H';
+  const hi = up ? b.p : a.p, lo = up ? a.p : b.p, d = hi - lo;
+  return { up, hi, lo, d, a, b, lv: r => up ? hi - r * d : lo + r * d, ex: r => up ? lo + r * d : hi - r * d };
+}
+
+/* ---------- Backtest ---------- */
+function simulate(sig, h, l, c, n, MAXB) {
+  const e = sig.entry, sl = sig.sl, tp = sig.tp, risk = Math.abs(e - sl), buy = sig.side === 'buy';
+  const fee = (e * 0.004) / risk; // phí ~0,15% mỗi chiều + thuế bán 0,1%, quy ra R
+  const end = Math.min(n - 1, sig.i + MAXB);
+  for (let j = sig.i + 1; j <= end; j++) {
+    const hitSL = buy ? l[j] <= sl : h[j] >= sl;
+    const hitTP = buy ? h[j] >= tp : l[j] <= tp;
+    if (hitSL) return { R: -1 - fee, status: 'sl', exit: j, bars: j - sig.i };
+    if (hitTP) return { R: sig.rr - fee, status: 'tp', exit: j, bars: j - sig.i };
+  }
+  if (sig.i + MAXB <= n - 1) {
+    const j = sig.i + MAXB;
+    const R = (buy ? c[j] - e : e - c[j]) / risk - fee;
+    return { R, status: 'time', exit: j, bars: MAXB };
+  }
+  return { R: null, status: 'open', exit: null, bars: n - 1 - sig.i };
+}
+
+function calcStats(trades) {
+  const n = trades.length;
+  if (!n) return { n: 0, wr: 0, exp: 0, pf: 0, dd: 0, total: 0 };
+  let gw = 0, gl = 0, cum = 0, peak = 0, dd = 0, wins = 0;
+  for (const t of trades) {
+    if (t.R > 0) { gw += t.R; wins++; } else gl += -t.R;
+    cum += t.R; if (cum > peak) peak = cum;
+    if (peak - cum > dd) dd = peak - cum;
+  }
+  return { n, wr: wins / n, exp: cum / n, pf: gl > 0 ? gw / gl : (gw > 0 ? Infinity : 0), dd, total: cum };
+}
+
+/* ---------- Phân tích chính ---------- */
+const TYPE_LABEL = { macd: 'MACD', kdj: 'KDJ', srsi: 'StochRSI', sr: 'Vùng giá', bb: 'Bollinger', ew: 'Elliott', vol: 'Volume', trend: 'Xu hướng', ichi: 'Ichimoku', fib: 'Fibonacci' };
+
+/* ---------- Wyckoff: tìm vùng đi ngang, phân loại tích lũy/phân phối, nhận diện sự kiện và pha ---------- */
+function wyFindRange(h, l, c, atr, end) {
+  const a = atr[end];
+  if (!isN(a) || end < 40) return null;
+  let best = null;
+  for (let L = 30; L <= 260 && L <= end + 1; L += 5) {
+    const s = end - L + 1;
+    let hi = -Infinity, lo = Infinity;
+    for (let i = s; i <= end; i++) { if (h[i] > hi) hi = h[i]; if (l[i] < lo) lo = l[i]; }
+    const W = hi - lo;
+    if (W > 9 * a) break;          // biên quá rộng so với biến động: đã là xu hướng
+    if (W < 2.5 * a) continue;     // biên quá hẹp: chưa đủ ý nghĩa
+    const mid = (hi + lo) / 2;
+    let topT = 0, botT = 0, lt = -99, lb = -99, cross = 0, prev = 0;
+    for (let i = s; i <= end; i++) {
+      if (h[i] >= hi - 0.2 * W) { if (i - lt >= 5) topT++; lt = i; }
+      if (l[i] <= lo + 0.2 * W) { if (i - lb >= 5) botT++; lb = i; }
+      const sd = c[i] > mid ? 1 : -1;
+      if (prev && sd !== prev) cross++;
+      prev = sd;
+    }
+    // đi ngang thật sự: chạm cả hai biên từ 2 lần trở lên (cách nhau >= 5 nến) và cắt đường giữa nhiều lần
+    if (topT >= 2 && botT >= 2 && cross >= 4) best = { s, e: end, L, top: hi, bot: lo, mid, W };
+  }
+  return best;
+}
+
+/* Dò sự kiện theo kịch bản TÍCH LŨY. Kịch bản phân phối chạy trên dữ liệu đảo dấu (gương) nên dùng chung hàm này. */
+function wyEvents(P, tr, prior, last) {
+  const { o, h, l, c, vr, spr } = P, { s, top, bot, W } = tr;
+  const ev = [], add = (k, i, extra) => ev.push(Object.assign({ k, i }, extra || {}));
+  const swingLow = i => { for (let j = Math.max(0, i - 2); j <= Math.min(last, i + 2); j++) if (l[j] < l[i]) return false; return true; };
+  // SC: nến bán tháo gần đáy, volume lớn và biên độ rộng
+  let sc = -1, best = -1;
+  if (prior !== 'up') {
+    for (let i = Math.max(1, s - 8); i <= Math.min(last, s + Math.max(25, Math.round(0.6 * (tr.e - s + 1)))); i++) {
+      if (l[i] <= bot + 0.3 * W && vr(i) >= 1.5 && spr(i) >= 1.2) { const q = vr(i) * spr(i); if (q > best) { best = q; sc = i; } }
+    }
+  }
+  if (sc >= 0) add('CLIMAX', sc, { pos: 'lo' });
+  // AR: nhịp hồi tự động sau SC, định ra biên trên
+  let ar = -1;
+  if (sc >= 0) { let m = -Infinity; for (let i = sc + 2; i <= Math.min(last, sc + 30); i++) if (h[i] > m) { m = h[i]; ar = i; } }
+  if (ar >= 0) add('AR', ar, { pos: 'hi' });
+  const R = ar >= 0 ? h[ar] : top, Sup = sc >= 0 ? l[sc] : bot;
+  const from = Math.max(s + 10, ar >= 0 ? ar + 5 : s + 10);
+  // ST: kiểm tra lại đáy với volume nhỏ hơn SC
+  if (sc >= 0 && ar >= 0) {
+    let lastSt = -99, cnt = 0;
+    for (let i = ar + 5; i <= last && cnt < 3; i++) {
+      if (l[i] <= Sup + 0.25 * W && l[i] >= Sup - 0.1 * W && vr(i) < 0.85 * vr(sc) && i - lastSt >= 8 && swingLow(i)) { add('ST', i, { pos: 'lo' }); lastSt = i; cnt++; }
+    }
+  }
+  // Spring: thủng đáy đã hình thành rồi đóng cửa trở lại trên đáy trong vòng 3 nến
+  let sp = -1, run = Infinity;
+  for (let j = s; j < from; j++) if (l[j] < run) run = l[j];
+  for (let i = from; i <= last; i++) {
+    if (l[i] < run - 0.02 * W && l[i] >= run - 0.35 * W) {
+      for (let k = i; k <= Math.min(last, i + 3); k++) if (c[k] > run) { sp = i; break; }
+    }
+    if (l[i] < run) run = l[i];
+  }
+  if (sp >= 0) add('SPRING', sp, { pos: 'lo' });
+  if (sp >= 0) {
+    for (let i = sp + 3; i <= last; i++) {
+      if (l[i] >= l[sp] && l[i] <= l[sp] + 0.15 * W && vr(i) < 0.8 && swingLow(i)) { add('TEST', i, { pos: 'lo' }); break; }
+    }
+  }
+  // SOS: nến tăng mạnh đóng cửa vượt biên trên với volume lớn (sau Spring nếu có)
+  let sos = -1;
+  for (let i = Math.max(from, sp >= 0 ? sp + 1 : from); i <= last; i++) {
+    if (c[i] > R && c[i] > o[i] && vr(i) >= 1.3 && spr(i) >= 0.9) { sos = i; break; }
+  }
+  if (sos >= 0) add('SOS', sos, { pos: 'hi' });
+  // LPS: nhịp lùi sau SOS, giữ trên vùng kháng cự cũ
+  if (sos >= 0) {
+    let lp = -1, m = Infinity;
+    for (let i = sos + 2; i <= Math.min(last, sos + 25); i++) if (l[i] < m) { m = l[i]; lp = i; }
+    if (lp >= 0 && m >= R - 0.4 * W && m > Sup && vr(lp) <= 1.0) add('LPS', lp, { pos: 'lo' });
+  }
+  // breakout yếu: vượt biên nhưng volume không xác nhận
+  let weak = -1;
+  if (sos < 0) for (let i = from; i <= last; i++) if (c[i] > R && c[i] > o[i]) { weak = i; break; }
+  return { ev: ev.filter(x => !(x.k === 'ST' && x.i === sp)), R, Sup, sc, ar, sp, sos, weak };
+}
+
+function wyckoff(C, ind) {
+  const n = C.length;
+  if (n < 120) return null;
+  const o = C.map(x => x.o), h = C.map(x => x.h), l = C.map(x => x.l), c = C.map(x => x.c), v = C.map(x => x.v);
+  const atr = ind.atr, vs = ind.volSma;
+  const vr = i => (isN(vs[i]) && vs[i] > 0) ? v[i] / vs[i] : 1;
+  const spr = i => (isN(atr[i]) && atr[i] > 0) ? (h[i] - l[i]) / atr[i] : 1;
+  let tr = null;
+  for (const off of [0, 3, 6, 10, 15, 20, 30, 45]) { tr = wyFindRange(h, l, c, atr, n - 1 - off); if (tr) break; }
+  if (!tr) return null;
+  let { s, e, top, bot, mid, W } = tr;
+  const last = n - 1, lc = c[last];
+  const post = lc > top ? 'up' : lc < bot ? 'down' : 'in';
+  const pre = c[s] - c[Math.max(0, s - 80)];
+  const prior = pre < -W ? 'down' : pre > W ? 'up' : 'flat';
+  let kind = post === 'up' ? 'acc' : post === 'down' ? 'dist' : prior === 'down' ? 'acc' : prior === 'up' ? 'dist' : 'unk';
+  const re = (post === 'up' && prior === 'up') || (post === 'down' && prior === 'down');
+  let pos = (lc - bot) / W;
+  const base = { kind, re, tr, post, prior, pos, events: [], phase: null, lean: 'wait', score: 0, notes: [] };
+  const kindName = kind === 'acc' ? (re ? 'tái tích lũy' : 'tích lũy') : kind === 'dist' ? (re ? 'tái phân phối' : 'phân phối') : 'đi ngang (chưa phân loại)';
+  base.title = `Vùng ${kindName} ${fmt(bot)}–${fmt(top)}`;
+  if (kind === 'unk') {
+    base.summary = `Có vùng đi ngang ${fmt(bot)}–${fmt(top)} kéo dài ${tr.L} nến, nhưng xu hướng trước đó không rõ nên chưa phân biệt được tích lũy hay phân phối. Theo dõi hướng giá thoát khỏi biên: đóng cửa trên ${fmt(top)} kèm volume lớn nghiêng về tích lũy, dưới ${fmt(bot)} kèm volume lớn nghiêng về phân phối.`;
+    base.trigger = { p: top, txt: `Đóng cửa trên ${fmt(top)} kèm volume lớn` }; base.inval = { p: bot, txt: `Đóng cửa dưới ${fmt(bot)} kèm volume lớn` };
+    return base;
+  }
+  const dist = kind === 'dist';
+  const P = dist
+    ? { o: o.map(x => -x), h: l.map(x => -x), l: h.map(x => -x), c: c.map(x => -x), vr, spr }
+    : { o, h, l, c, vr, spr };
+  const mirTr = () => ({ s, e, top: -bot, bot: -top, mid: -mid, W });
+  let trG = dist ? mirTr() : tr;
+  const priorG = dist ? (prior === 'up' ? 'down' : prior === 'down' ? 'up' : 'flat') : prior;
+  let r = wyEvents(P, trG, priorG, last);
+  if (r.sc > s + 3) {            // thu hẹp vùng về đúng điểm bắt đầu (SC/BC) rồi dò lại
+    let hi = -Infinity, lo = Infinity;
+    for (let i = r.sc; i <= e; i++) { if (h[i] > hi) hi = h[i]; if (l[i] < lo) lo = l[i]; }
+    s = r.sc; top = hi; bot = lo; W = hi - lo; mid = (hi + lo) / 2;
+    tr = { s, e, L: e - s + 1, top, bot, mid, W };
+    trG = dist ? mirTr() : tr;
+    r = wyEvents(P, trG, priorG, last);
+    base.tr = tr; pos = (lc - bot) / W;
+    base.title = `Vùng ${kindName} ${fmt(bot)}–${fmt(top)}`;
+  }
+  const f = x => dist ? -x : x;
+  const LBL = dist
+    ? { CLIMAX: 'BC', AR: 'AR', ST: 'ST', SPRING: 'UT', TEST: 'Test', SOS: 'SOW', LPS: 'LPSY' }
+    : { CLIMAX: 'SC', AR: 'AR', ST: 'ST', SPRING: 'Spring', TEST: 'Test', SOS: 'SOS', LPS: 'LPS' };
+  const dur = Math.max(1, e - s + 1);
+  const events = r.ev.map(x => {
+    const i = x.i, oPos = dist ? (x.pos === 'lo' ? 'hi' : 'lo') : x.pos, p = oPos === 'lo' ? l[i] : h[i], vx = vr(i).toFixed(1);
+    let label = LBL[x.k], txt = '';
+    if (!dist) {
+      txt = {
+        CLIMAX: `Selling Climax: nến bán tháo mạnh gần đáy, volume gấp ${vx} lần trung bình. Lực bán dồn dập thường đánh dấu điểm dừng của đà giảm`,
+        AR: `Automatic Rally: nhịp hồi tự động sau SC, đỉnh nhịp này định ra biên trên của vùng (${fmt(p)})`,
+        ST: `Secondary Test: kiểm tra lại đáy với volume ${vx} lần trung bình, thấp hơn lúc SC. Lực bán đã yếu đi`,
+        SPRING: `Spring: giá thủng đáy vùng rồi đóng cửa trở lại phía trên. ` + (vr(i) < 1 ? 'Volume thấp: nguồn cung đã cạn, Spring có chất lượng tốt hơn' : `Volume gấp ${vx} lần trung bình: có thể là cú rũ bỏ mạnh, cần nhịp Test hoặc SOS để xác nhận`),
+        TEST: `Test: kiểm tra lại đáy Spring với volume thấp (${vx} lần trung bình) và không tạo đáy mới`,
+        SOS: `Sign of Strength: nến tăng mạnh đóng cửa vượt biên trên ${fmt(r.R)} với volume gấp ${vx} lần trung bình`,
+        LPS: `Last Point of Support: nhịp lùi sau SOS, giữ được trên vùng kháng cự cũ với volume cạn (${vx} lần trung bình)`
+      }[x.k];
+    } else {
+      if (x.k === 'SPRING') label = (i - s) / dur >= 0.6 ? 'UTAD' : 'UT';
+      txt = {
+        CLIMAX: `Buying Climax: nến mua đuổi mạnh gần đỉnh, volume gấp ${vx} lần trung bình. Lực mua dồn dập thường đánh dấu điểm dừng của đà tăng`,
+        AR: `Automatic Reaction: nhịp giảm tự động sau BC, đáy nhịp này định ra biên dưới của vùng (${fmt(p)})`,
+        ST: `Secondary Test: kiểm tra lại đỉnh với volume ${vx} lần trung bình, thấp hơn lúc BC. Lực mua đã yếu đi`,
+        SPRING: `Upthrust: giá vượt đỉnh vùng rồi đóng cửa trở lại phía dưới. ` + (vr(i) < 1 ? 'Volume thấp: lực mua yếu, cú vượt đỉnh thiếu sức' : `Volume gấp ${vx} lần trung bình: có thể là bẫy tăng giá, cần SOW để xác nhận`),
+        TEST: `Test: kiểm tra lại đỉnh Upthrust với volume thấp (${vx} lần trung bình), không vượt được đỉnh`,
+        SOS: `Sign of Weakness: nến giảm mạnh đóng cửa thủng biên dưới ${fmt(f(r.R))} với volume gấp ${vx} lần trung bình`,
+        LPS: `Last Point of Supply: nhịp hồi yếu sau SOW, không vượt nổi vùng hỗ trợ cũ, volume cạn (${vx} lần trung bình)`
+      }[x.k];
+    }
+    return { k: x.k, label, i, p, pos: oPos, txt };
+  });
+  const has = k => r.ev.some(x => x.k === k);
+  const lastG = f(lc), RG = r.R, SG = r.Sup;                // theo hệ quy chiếu "tích lũy"
+  let phase = null;
+  if (r.sos >= 0) phase = (dist ? -lc : lc) > RG + 0.5 * W ? 'E' : 'D';
+  else if (r.sp >= 0) phase = 'C';
+  else if (r.sc >= 0 && r.ar >= 0) phase = (has('ST') || last - r.ar >= 15) ? 'B' : 'A';
+  const PH = dist
+    ? { A: 'Pha A: đà tăng bị chặn (BC, AR). Lực mua bắt đầu cạn nhưng chưa xác nhận đỉnh.',
+        B: 'Pha B: xây dựng nguyên nhân. Giá dao động trong biên, các nhịp ST kiểm tra lại đỉnh. Cần chờ UT hoặc SOW.',
+        C: 'Pha C: Upthrust đã xuất hiện, bước thử cầu cuối cùng. Chờ SOW để xác nhận phân phối.',
+        D: 'Pha D: SOW đã thủng biên dưới, giá chuyển từ đi ngang sang xu hướng giảm. LPSY là vùng hồi tham khảo.',
+        E: 'Pha E: giá đã rời biên theo hướng giảm (markdown).' }
+    : { A: 'Pha A: đà giảm bị chặn (SC, AR). Cung bắt đầu cạn nhưng chưa xác nhận đáy.',
+        B: 'Pha B: xây dựng nguyên nhân. Giá dao động trong biên, các nhịp ST kiểm tra lại đáy. Cần chờ Spring hoặc SOS.',
+        C: 'Pha C: Spring đã xuất hiện, bước thử cung cuối cùng. Chờ SOS để xác nhận tích lũy.',
+        D: 'Pha D: SOS đã vượt biên trên, giá chuyển từ đi ngang sang xu hướng tăng. LPS là vùng lùi tham khảo.',
+        E: 'Pha E: giá đã rời biên theo hướng tăng (markup).' };
+  let lean = 'wait';
+  if (phase === 'D' || phase === 'E') lean = dist ? 'sell' : 'buy';
+  else if (phase === 'C') lean = dist ? 'sell' : 'buy';
+  // điểm khớp mẫu
+  let sc = 0;
+  if (r.sc >= 0) sc += 1; if (r.ar >= 0) sc += 1;
+  sc += Math.min(2, r.ev.filter(x => x.k === 'ST').length);
+  if (r.sp >= 0) sc += 2; if (has('TEST')) sc += 1; if (r.sos >= 0) sc += 2; if (has('LPS')) sc += 1;
+  const score = Math.min(100, Math.round(sc / 10 * 100));
+  const notes = [];
+  if (r.sc < 0 && prior !== 'flat') notes.push(`Chưa thấy ${dist ? 'BC' : 'SC'} rõ ràng (cần nến volume lớn, biên độ rộng gần ${dist ? 'đỉnh' : 'đáy'} của vùng).`);
+  if (r.weak >= 0) notes.push(`Giá đã đóng cửa ${dist ? 'dưới' : 'trên'} biên nhưng volume không đủ lớn để gọi là ${dist ? 'SOW' : 'SOS'}: chưa xác nhận.`);
+  if (re) notes.push(`Giá đi tiếp theo hướng xu hướng trước đó nên đây có thể là ${dist ? 'tái phân phối' : 'tái tích lũy'} giữa xu hướng, độ tin cậy thấp hơn so với đảo chiều.`);
+  if (off_(n, e) > 0) notes.push(`Vùng đi ngang kết thúc cách đây ${off_(n, e)} nến.`);
+  const trigger = dist
+    ? { p: -RG, txt: r.sos >= 0 ? `Vùng hỗ trợ cũ ${fmt(-RG)} nay thành kháng cự` : `Đóng cửa dưới ${fmt(-RG)} kèm volume lớn (SOW)` }
+    : { p: RG, txt: r.sos >= 0 ? `Vùng kháng cự cũ ${fmt(RG)} nay thành hỗ trợ` : `Đóng cửa trên ${fmt(RG)} kèm volume lớn (SOS)` };
+  const inval = dist
+    ? { p: tr.top, txt: `Đóng cửa trên ${fmt(tr.top)}: kịch bản phân phối bị vô hiệu` }
+    : { p: tr.bot, txt: `Đóng cửa dưới ${fmt(tr.bot)}: kịch bản tích lũy bị vô hiệu` };
+  const where = post === 'up' ? `Giá đã đóng cửa trên biên trên ${fmt(top)}` : post === 'down' ? `Giá đã đóng cửa dưới biên dưới ${fmt(bot)}` : `Giá đang ở ${Math.round(Math.max(0, Math.min(1, pos)) * 100)}% biên độ vùng (đáy 0%, đỉnh 100%)`;
+  const summary = `${base.title}, kéo dài ${tr.L} nến, xu hướng trước đó ${prior === 'down' ? 'giảm' : prior === 'up' ? 'tăng' : 'đi ngang'}. ` +
+    (phase ? PH[phase] : `Chưa thấy đủ dấu hiệu đặc trưng của Wyckoff (${dist ? 'BC, AR, UT, SOW' : 'SC, AR, Spring, SOS'}), nên coi đây mới là vùng đi ngang.`) + ` ${where}.`;
+  return Object.assign(base, { events, phase, phaseText: phase ? PH[phase] : null, lean, score, notes, trigger, inval, R: dist ? -SG : RG, S: dist ? -RG : SG, summary, where });
+}
+function off_(n, e) { return n - 1 - e; }
+
+function analyze(C, opts) {
+  opts = opts || {};
+  const RR = opts.rr || 2, SLATR = opts.slAtr || 1.5, MAXB = opts.maxBars || 60;
+  const n = C.length;
+  const o = C.map(x => x.o), h = C.map(x => x.h), l = C.map(x => x.l), c = C.map(x => x.c), v = C.map(x => x.v);
+  const ind = calcInd(o, h, l, c, v);
+  const piv = fractals(h, l, 5);
+  const zz = zigzag(h, l, ind.atr, 2.5);
+  const ew = elliottEvents(zz.piv);
+  const wy = wyckoff(C, ind);
+
+  const trig = Array.from({ length: n }, () => []);
+  const add = (i, side, type, pts, txt, confirm) => trig[i].push({ side, type, pts, txt, confirm: !!confirm });
+  const F0 = x => x.toFixed(0), F1 = x => x.toFixed(1);
+
+  for (const e of ew) if (e.i < n) add(e.i, e.side, 'ew', e.kind === 'w5' ? 1.5 : 1.2, e.text);
+
+  const START = 40;
+  for (let i = START; i < n; i++) {
+    const atr = ind.atr[i];
+    // MACD
+    if (isN(ind.hist[i]) && isN(ind.hist[i - 1])) {
+      if (ind.hist[i - 1] <= 0 && ind.hist[i] > 0) {
+        const below = ind.macd[i] < 0;
+        add(i, 'buy', 'macd', below ? 1.5 : 1.0, below
+          ? 'MACD cắt lên đường tín hiệu khi vẫn dưới vạch 0: lực giảm đã suy yếu, động lượng bắt đầu quay đầu tăng'
+          : 'MACD cắt lên đường tín hiệu và nằm trên vạch 0: động lượng tăng được củng cố');
+      } else if (ind.hist[i - 1] >= 0 && ind.hist[i] < 0) {
+        const above = ind.macd[i] > 0;
+        add(i, 'sell', 'macd', above ? 1.5 : 1.0, above
+          ? 'MACD cắt xuống đường tín hiệu khi còn trên vạch 0: đà tăng đang cạn, động lượng quay đầu giảm'
+          : 'MACD cắt xuống đường tín hiệu và nằm dưới vạch 0: động lượng giảm được củng cố');
+      }
+    }
+    // KDJ
+    if (isN(ind.K[i - 1]) && isN(ind.D[i - 1])) {
+      const K = ind.K[i], D = ind.D[i], J = ind.J[i];
+      if (ind.K[i - 1] <= ind.D[i - 1] && K > D) {
+        const pts = K < 30 ? 1.2 : K < 50 ? 0.6 : 0.3;
+        add(i, 'buy', 'kdj', pts, `KDJ: K (${F0(K)}) cắt lên D (${F0(D)}) ` +
+          (K < 30 ? 'trong vùng quá bán (<30), tín hiệu đảo chiều tăng đáng tin hơn' :
+           K < 50 ? 'ở nửa dưới, đà tăng mới hình thành' : 'ở vùng cao, chỉ là tín hiệu yếu') +
+          (J < 10 ? `; J chạm vùng cực thấp (${F0(J)})` : ''));
+      } else if (ind.K[i - 1] >= ind.D[i - 1] && K < D) {
+        const pts = K > 70 ? 1.2 : K > 50 ? 0.6 : 0.3;
+        add(i, 'sell', 'kdj', pts, `KDJ: K (${F0(K)}) cắt xuống D (${F0(D)}) ` +
+          (K > 70 ? 'trong vùng quá mua (>70), tín hiệu đảo chiều giảm đáng tin hơn' :
+           K > 50 ? 'ở nửa trên, đà giảm mới hình thành' : 'ở vùng thấp, chỉ là tín hiệu yếu') +
+          (J > 90 ? `; J chạm vùng cực cao (${F0(J)})` : ''));
+      }
+    }
+    // Stochastic RSI
+    if (isN(ind.sk[i - 1]) && isN(ind.sd[i - 1]) && isN(ind.sk[i]) && isN(ind.sd[i])) {
+      const K = ind.sk[i], D = ind.sd[i];
+      if (ind.sk[i - 1] <= ind.sd[i - 1] && K > D) {
+        const pts = K < 20 ? 1.2 : K < 50 ? 0.5 : 0.2;
+        add(i, 'buy', 'srsi', pts, `StochRSI: %K (${F0(K)}) cắt lên %D (${F0(D)}) ` +
+          (K < 20 ? 'từ vùng quá bán (<20): RSI vừa chạm đáy chu kỳ và hồi lên' :
+           K < 50 ? 'ở nửa dưới: RSI đang hồi phục' : 'ở vùng cao: tín hiệu yếu'));
+      } else if (ind.sk[i - 1] >= ind.sd[i - 1] && K < D) {
+        const pts = K > 80 ? 1.2 : K > 50 ? 0.5 : 0.2;
+        add(i, 'sell', 'srsi', pts, `StochRSI: %K (${F0(K)}) cắt xuống %D (${F0(D)}) ` +
+          (K > 80 ? 'từ vùng quá mua (>80): RSI vừa chạm đỉnh chu kỳ và quay xuống' :
+           K > 50 ? 'ở nửa trên: RSI bắt đầu suy yếu' : 'ở vùng thấp: tín hiệu yếu'));
+      }
+    }
+    // Vùng hỗ trợ / kháng cự
+    if (isN(atr)) {
+      const zs = zonesAt(piv, i, atr);
+      const spike = isN(ind.volSma[i]) && v[i] > 1.5 * ind.volSma[i];
+      let bestBuy = null, bestSell = null;
+      for (const z of zs) {
+        const rng = `${fmt(z.lo)}–${fmt(z.hi)}`;
+        if (z.mid < c[i] && l[i] <= z.hi + 0.1 * atr && l[i] >= z.lo - 0.6 * atr && c[i] > z.hi && c[i] > o[i]) {
+          if (!bestBuy || z.touches > bestBuy.touches)
+            bestBuy = { touches: z.touches, txt: `Giá chạm vùng hỗ trợ ${rng} (đã phản ứng ${z.touches} lần) rồi đóng cửa trên vùng bằng nến xanh: lực mua đang bảo vệ vùng này` };
+        }
+        if (z.mid > c[i] && h[i] >= z.lo - 0.1 * atr && h[i] <= z.hi + 0.6 * atr && c[i] < z.lo && c[i] < o[i]) {
+          if (!bestSell || z.touches > bestSell.touches)
+            bestSell = { touches: z.touches, txt: `Giá chạm vùng kháng cự ${rng} (đã bị từ chối ${z.touches} lần) rồi đóng cửa dưới vùng bằng nến đỏ: phe bán đang chặn giá` };
+        }
+        if (spike && c[i] > z.hi && c[i - 1] <= z.hi && c[i] > o[i]) {
+          if (!bestBuy || z.touches > bestBuy.touches)
+            bestBuy = { touches: z.touches, txt: `Phá vỡ kháng cự ${rng} với volume gấp ${(v[i] / ind.volSma[i]).toFixed(1)} lần trung bình: kháng cự cũ có thể chuyển thành hỗ trợ` };
+        }
+        if (spike && c[i] < z.lo && c[i - 1] >= z.lo && c[i] < o[i]) {
+          if (!bestSell || z.touches > bestSell.touches)
+            bestSell = { touches: z.touches, txt: `Thủng hỗ trợ ${rng} với volume gấp ${(v[i] / ind.volSma[i]).toFixed(1)} lần trung bình: hỗ trợ cũ có thể chuyển thành kháng cự` };
+        }
+      }
+      if (bestBuy) add(i, 'buy', 'sr', 1.5, bestBuy.txt);
+      if (bestSell) add(i, 'sell', 'sr', 1.5, bestSell.txt);
+    }
+    // Bollinger Bands
+    if (isN(ind.bbLo[i]) && isN(ind.bbLo[i - 1])) {
+      const lo = ind.bbLo[i], up = ind.bbUp[i], mid = ind.bbMid[i];
+      let minBw = Infinity;
+      for (let j = Math.max(20, i - 100); j < i; j++) if (isN(ind.bbBw[j]) && ind.bbBw[j] < minBw) minBw = ind.bbBw[j];
+      const squeeze = isFinite(minBw) && ind.bbBw[i - 1] <= minBw * 1.15;
+      const spikeB = isN(ind.volSma[i]) && v[i] > 1.5 * ind.volSma[i];
+      let bb = null;
+      if (squeeze && spikeB && c[i] > up && c[i - 1] <= ind.bbUp[i - 1] && c[i] > o[i])
+        bb = { side: 'buy', pts: 1.5, txt: `Bollinger: dải co hẹp (squeeze) rồi giá đóng cửa vượt dải trên (${fmt(up)}) kèm volume lớn: biến động đang bung ra theo hướng tăng` };
+      else if (squeeze && spikeB && c[i] < lo && c[i - 1] >= ind.bbLo[i - 1] && c[i] < o[i])
+        bb = { side: 'sell', pts: 1.5, txt: `Bollinger: dải co hẹp (squeeze) rồi giá đóng cửa thủng dải dưới (${fmt(lo)}) kèm volume lớn: biến động đang bung ra theo hướng giảm` };
+      else if (l[i] <= lo && c[i] > lo && c[i] > o[i])
+        bb = { side: 'buy', pts: 1.0, txt: `Bollinger: giá đâm thủng dải dưới (${fmt(lo)}) rồi đóng cửa trở lại trong dải bằng nến xanh: bán quá đà, giá có xu hướng hồi về đường giữa ${fmt(mid)}` };
+      else if (h[i] >= up && c[i] < up && c[i] < o[i])
+        bb = { side: 'sell', pts: 1.0, txt: `Bollinger: giá vọt lên dải trên (${fmt(up)}) rồi đóng cửa trở lại trong dải bằng nến đỏ: mua quá đà, giá có xu hướng lùi về đường giữa ${fmt(mid)}` };
+      if (bb) add(i, bb.side, 'bb', bb.pts, bb.txt);
+    }
+    // Ichimoku
+    {
+      const sa = ind.spanA[i], sb = ind.spanB[i], tk = ind.tenkan[i], kj = ind.kijun[i], tkp = ind.tenkan[i - 1], kjp = ind.kijun[i - 1];
+      if (isN(sa) && isN(sb) && isN(tk) && isN(kj) && isN(tkp) && isN(kjp)) {
+        const top = Math.max(sa, sb), bot = Math.min(sa, sb);
+        const pt = Math.max(ind.spanA[i - 1], ind.spanB[i - 1]), pb = Math.min(ind.spanA[i - 1], ind.spanB[i - 1]);
+        if (isN(pt) && c[i - 1] <= pt && c[i] > top && c[i] > o[i])
+          add(i, 'buy', 'ichi', 1.2, `Ichimoku: giá đóng cửa vượt lên trên đám mây (${fmt(bot)}–${fmt(top)}): xu hướng có thể chuyển sang tăng`);
+        else if (isN(pb) && c[i - 1] >= pb && c[i] < bot && c[i] < o[i])
+          add(i, 'sell', 'ichi', 1.2, `Ichimoku: giá đóng cửa thủng xuống dưới đám mây (${fmt(bot)}–${fmt(top)}): xu hướng có thể chuyển sang giảm`);
+        else if (tkp <= kjp && tk > kj)
+          add(i, 'buy', 'ichi', c[i] > top ? 1.5 : c[i] >= bot ? 0.5 : 0.2, c[i] > top ? 'Ichimoku: Tenkan cắt lên Kijun khi giá trên mây: tín hiệu tăng mạnh theo xu hướng' : c[i] >= bot ? 'Ichimoku: Tenkan cắt lên Kijun nhưng giá còn trong mây: tín hiệu yếu' : 'Ichimoku: Tenkan cắt lên Kijun nhưng giá còn dưới mây: chỉ là nhịp hồi, chưa đổi xu hướng');
+        else if (tkp >= kjp && tk < kj)
+          add(i, 'sell', 'ichi', c[i] < bot ? 1.5 : c[i] <= top ? 0.5 : 0.2, c[i] < bot ? 'Ichimoku: Tenkan cắt xuống Kijun khi giá dưới mây: tín hiệu giảm mạnh theo xu hướng' : c[i] <= top ? 'Ichimoku: Tenkan cắt xuống Kijun nhưng giá còn trong mây: tín hiệu yếu' : 'Ichimoku: Tenkan cắt xuống Kijun nhưng giá còn trên mây: chỉ là nhịp điều chỉnh');
+      }
+    }
+    // Fibonacci retracement
+    {
+      const fs = fibSwing(zz.piv, i, atr);
+      if (fs) {
+        const L5 = fs.lv(0.5), L618 = fs.lv(0.618), L786 = fs.lv(0.786);
+        if (fs.up && l[i] <= L5 && l[i] >= L786 - 0.3 * atr && c[i] > L618 && c[i] > o[i])
+          add(i, 'buy', 'fib', 1.3, `Fibonacci: giá hồi về vùng vàng 50–61,8% (${fmt(L618)}–${fmt(L5)}) của nhịp tăng ${fmt(fs.lo)}→${fmt(fs.hi)} rồi bật lên bằng nến xanh: thường là nhịp hồi xong để đi tiếp, mục tiêu tham khảo ${fmt(fs.ex(1.272))}`);
+        else if (!fs.up && h[i] >= L5 && h[i] <= L786 + 0.3 * atr && c[i] < L618 && c[i] < o[i])
+          add(i, 'sell', 'fib', 1.3, `Fibonacci: giá hồi lên vùng vàng 50–61,8% (${fmt(L5)}–${fmt(L618)}) của nhịp giảm ${fmt(fs.hi)}→${fmt(fs.lo)} rồi bị đẩy xuống bằng nến đỏ: thường là nhịp hồi xong để giảm tiếp, mục tiêu tham khảo ${fmt(fs.ex(1.272))}`);
+      }
+    }
+    // Volume xác nhận
+    if (isN(ind.volSma[i]) && v[i] > 1.8 * ind.volSma[i]) {
+      const x = (v[i] / ind.volSma[i]).toFixed(1);
+      if (c[i] > o[i]) add(i, 'buy', 'vol', 0.5, `Volume gấp ${x} lần trung bình 20 nến trên nến xanh: dòng tiền mua xác nhận`, true);
+      else if (c[i] < o[i]) add(i, 'sell', 'vol', 0.5, `Volume gấp ${x} lần trung bình 20 nến trên nến đỏ: dòng tiền bán xác nhận`, true);
+    }
+  }
+
+  const trendAt = i => {
+    const a = ind.ema50[i], b = ind.ema200[i];
+    if (!isN(a) || !isN(b)) return 0;
+    if (a > b && c[i] > a) return 1;
+    if (a < b && c[i] < a) return -1;
+    return 0;
+  };
+
+  const WIN = 3;
+  function scoreAt(i) {
+    const best = { buy: {}, sell: {} };
+    for (let j = Math.max(0, i - WIN + 1); j <= i; j++) {
+      for (const t of trig[j]) {
+        const cur = best[t.side][t.type];
+        if (!cur || t.pts > cur.pts || (t.pts === cur.pts && j > cur.j)) best[t.side][t.type] = Object.assign({ j }, t);
+      }
+    }
+    const tr = trendAt(i);
+    const out = {};
+    for (const side of ['buy', 'sell']) {
+      const items = Object.values(best[side]).sort((a, b) => b.pts - a.pts);
+      let s = items.reduce((a, x) => a + x.pts, 0);
+      const distinct = items.filter(x => !x.confirm).length;
+      let adj = 0;
+      if (items.length) {
+        const want = side === 'buy' ? 1 : -1;
+        if (tr === want) adj = 0.5; else if (tr === -want) adj = -0.5;
+        if (adj !== 0) {
+          const up = tr > 0;
+          items.push({
+            type: 'trend', side, pts: adj, j: i, confirm: true,
+            txt: adj > 0
+              ? `Thuận xu hướng chính: EMA50 ${up ? 'trên' : 'dưới'} EMA200 và giá ${up ? 'trên' : 'dưới'} EMA50`
+              : `Ngược xu hướng chính (EMA50 ${up ? 'trên' : 'dưới'} EMA200, giá ${up ? 'trên' : 'dưới'} EMA50): rủi ro cao hơn nên bị trừ điểm`
+          });
+        }
+      }
+      s = Math.max(0, s + adj);
+      out[side] = { score: s, items, distinct, atBar: trig[i].some(t => t.side === side) };
+    }
+    return out;
+  }
+
+  // Sinh tín hiệu
+  const signals = [];
+  const lastAt = { buy: -99, sell: -99 };
+  for (let i = START; i < n; i++) {
+    const sc = scoreAt(i);
+    const side = sc.buy.score >= sc.sell.score ? 'buy' : 'sell';
+    const s = sc[side];
+    if (s.score < 3 || s.distinct < 2 || !s.atBar) continue;
+    if (i - lastAt[side] < 6) continue;
+    const atr = ind.atr[i];
+    if (!isN(atr)) continue;
+    const risk = SLATR * atr, entry = c[i];
+    const sig = {
+      i, side, score: s.score, strength: Math.round(Math.min(100, s.score / 8 * 100)),
+      entry, atr, risk, rr: RR,
+      sl: side === 'buy' ? entry - risk : entry + risk,
+      tp: side === 'buy' ? entry + RR * risk : entry - RR * risk,
+      items: s.items, t: C[i].t
+    };
+    sig.res = simulate(sig, h, l, c, n, MAXB);
+    signals.push(sig);
+    lastAt[side] = i;
+  }
+
+  const closed = signals.filter(s => s.res.status !== 'open').map(s => ({ i: s.i, side: s.side, R: s.res.R }));
+  const cut = Math.floor(n * 0.7);
+  const stats = {
+    all: calcStats(closed),
+    buy: calcStats(closed.filter(t => t.side === 'buy')),
+    sell: calcStats(closed.filter(t => t.side === 'sell')),
+    oos: calcStats(closed.filter(t => t.i >= cut))
+  };
+
+  // Trạng thái hiện tại (nến đóng gần nhất)
+  const sc = scoreAt(n - 1);
+  const side = sc.buy.score >= sc.sell.score ? 'buy' : 'sell';
+  const top = sc[side];
+  const ok = top.score >= 3 && top.distinct >= 2;
+  const now = {
+    side, ok, strong: ok && top.score >= 5, score: top.score, items: top.items,
+    strength: Math.round(Math.min(100, top.score / 8 * 100)), scores: { buy: sc.buy.score, sell: sc.sell.score }
+  };
+
+  const zonesNow = zonesAt(piv, n - 1, ind.atr[n - 1]);
+  const ewLast = ew.length ? ew[ew.length - 1] : null;
+
+  // ---- Dự báo cho các nến sắp tới: mỗi chỉ báo bỏ một phiếu theo trạng thái hiện tại (không cần chờ nến cắt nhau) ----
+  const fsNow = fibSwing(zz.piv, n - 1, ind.atr[n - 1]);
+  const votes = [], vote = (type, v, txt) => votes.push({ type, v, txt });
+  {
+    const i = n - 1, a = ind.spanA[i], b = ind.spanB[i], tk = ind.tenkan[i], kj = ind.kijun[i];
+    if (isN(a) && isN(b) && isN(tk) && isN(kj)) {
+      const tp = Math.max(a, b), bt = Math.min(a, b);
+      const pos = c[i] > tp ? 1 : c[i] < bt ? -1 : 0, cr = tk > kj ? 1 : -1, ch = i >= 26 ? (c[i] > c[i - 26] ? 1 : -1) : 0;
+      vote('ichi', pos * 0.6 + cr * 0.25 + ch * 0.15, `Giá ${pos > 0 ? 'nằm trên' : pos < 0 ? 'nằm dưới' : 'đang ở trong'} mây (${fmt(bt)}–${fmt(tp)}), Tenkan ${cr > 0 ? 'trên' : 'dưới'} Kijun, Chikou ${ch > 0 ? 'trên' : 'dưới'} giá 26 nến trước` + (pos === 0 ? ': vùng giằng co, chưa rõ hướng' : ''));
+    }
+    const hh = ind.hist[i], hp = ind.hist[i - 1];
+    if (isN(hh) && isN(hp)) vote('macd', (hh > 0 ? 0.5 : -0.5) + (hh > hp ? 0.5 : -0.5), `Histogram MACD ${hh > 0 ? 'dương' : 'âm'} và ${hh > hp ? 'đang tăng dần' : 'đang giảm dần'}: động lượng ${(hh > 0) === (hh > hp) ? 'đang được củng cố' : 'đang suy yếu'}`);
+    const K = ind.K[i], D = ind.D[i];
+    if (isN(K) && isN(D)) vote('kdj', (K > D ? 0.5 : -0.5) + (K < 20 ? 0.5 : K > 80 ? -0.5 : 0), `KDJ: K ${F0(K)} ${K > D ? 'trên' : 'dưới'} D ${F0(D)}` + (K < 20 ? ', vùng quá bán, dễ hồi' : K > 80 ? ', vùng quá mua, dễ điều chỉnh' : ''));
+    const sk = ind.sk[i], sd = ind.sd[i];
+    if (isN(sk) && isN(sd)) vote('srsi', (sk > sd ? 0.5 : -0.5) + (sk < 20 ? 0.5 : sk > 80 ? -0.5 : 0), `StochRSI: %K ${F0(sk)} ${sk > sd ? 'trên' : 'dưới'} %D ${F0(sd)}` + (sk < 20 ? ', vùng quá bán, dễ hồi' : sk > 80 ? ', vùng quá mua, dễ điều chỉnh' : ''));
+    const bm = ind.bbMid[i], bu = ind.bbUp[i], bl = ind.bbLo[i];
+    if (isN(bm) && isN(bu)) vote('bb', c[i] > bu ? -0.5 : c[i] < bl ? 0.5 : c[i] > bm ? 0.4 : -0.4, c[i] > bu ? 'Giá vượt dải trên Bollinger: mua quá đà, dễ lùi về đường giữa' : c[i] < bl ? 'Giá dưới dải dưới Bollinger: bán quá đà, dễ hồi về đường giữa' : `Giá ${c[i] > bm ? 'trên' : 'dưới'} đường giữa Bollinger (${fmt(bm)})`);
+    if (fsNow) {
+      const sg = fsNow.up ? 1 : -1, r = fsNow.up ? (fsNow.hi - c[i]) / fsNow.d : (c[i] - fsNow.lo) / fsNow.d, pc = (r * 100).toFixed(0);
+      const nm = fsNow.up ? 'tăng' : 'giảm', sw = `${fmt(fsNow.lo)}–${fmt(fsNow.hi)}`;
+      if (r < 0) vote('fib', sg * 0.5, `Giá đã vượt qua điểm cuối nhịp ${nm} gần nhất (${sw}): xu hướng ${nm} đang mở rộng`);
+      else if (r < 0.382) vote('fib', sg * 0.3, `Giá mới hồi ${pc}% nhịp ${nm} (${sw}): nhịp hồi nông, xu hướng ${nm} còn mạnh`);
+      else if (r <= 0.786) vote('fib', sg * 0.7, `Giá đang hồi ${pc}% nhịp ${nm} (${sw}), nằm trong vùng Fibonacci 38,2–78,6%: vùng thường có lực đỡ để đi tiếp theo hướng ${nm}`);
+      else if (r <= 1) vote('fib', -sg * 0.5, `Giá hồi sâu ${pc}% nhịp ${nm} (${sw}): quá 78,6% nên nguy cơ đảo chiều tăng lên`);
+      else vote('fib', -sg, `Giá đã đi ngược và phá hết nhịp ${nm} gần nhất (${sw}): cấu trúc ${nm} bị vô hiệu`);
+    }
+    const tr = trendAt(i);
+    vote('trend', tr, tr > 0 ? 'EMA50 trên EMA200 và giá trên EMA50: xu hướng chính tăng' : tr < 0 ? 'EMA50 dưới EMA200 và giá dưới EMA50: xu hướng chính giảm' : 'EMA50/EMA200 chưa cho xu hướng chính rõ ràng');
+  }
+  const MAXV = { ichi: 1, macd: 1, kdj: 1, srsi: 1, bb: 0.5, fib: 1, trend: 1 };
+  const bias = votes.reduce((a, x) => a + x.v, 0), maxB = votes.reduce((a, x) => a + MAXV[x.type], 0) || 1;
+  const dir = bias >= 0.25 * maxB ? 'buy' : bias <= -0.25 * maxB ? 'sell' : 'wait';
+  const pct = Math.round(Math.min(100, Math.abs(bias) / maxB * 100));
+  const fc = { dir, bias, max: maxB, pct, votes, horizon: MAXB, confirmed: now.ok && now.side === dir, strong: dir !== 'wait' && pct >= 55 && now.ok && now.side === dir };
+  const atrN = ind.atr[n - 1];
+  if (dir !== 'wait' && isN(atrN)) {
+    const sg = dir === 'buy' ? 1 : -1, risk = SLATR * atrN, e = c[n - 1];
+    fc.entry = e; fc.zoneLo = e - 0.3 * atrN; fc.zoneHi = e + 0.3 * atrN;
+    fc.sl = e - sg * risk; fc.tp1 = e + sg * RR * risk; fc.rr = RR; fc.slPct = risk / e * 100;
+    fc.tp2 = e + sg * 3 * risk; fc.tp2Src = 'R:R 1:3';
+    if (fsNow && fsNow.up === (dir === 'buy')) { const x = fsNow.ex(1.618); if (sg * (x - fc.tp1) > 0) { fc.tp2 = x; fc.tp2Src = 'Fib mở rộng 161,8%'; } }
+  } else if (dir !== 'wait') fc.dir = 'wait';
+
+  // ---- Cảnh báo đảo chiều KDJ (14,3,3): ưu tiên báo sớm, không cần các chỉ báo khác đồng thuận ----
+  let kdjAlert = null;
+  {
+    const i = n - 1, K = ind.K, D = ind.D, J = ind.J;
+    if (i >= 3 && [K[i], D[i], K[i - 1], D[i - 1], J[i], J[i - 1], J[i - 2]].every(isN)) {
+      const upX = K[i - 1] <= D[i - 1] && K[i] > D[i], dnX = K[i - 1] >= D[i - 1] && K[i] < D[i];
+      const jUp = J[i - 1] < J[i - 2] && J[i] > J[i - 1] && J[i - 1] < 0;      // J chạm đáy vùng quá bán rồi ngóc lên
+      const jDn = J[i - 1] > J[i - 2] && J[i] < J[i - 1] && J[i - 1] > 100;     // J chạm đỉnh vùng quá mua rồi quay xuống
+      const jxUp = J[i - 1] <= K[i - 1] && J[i] > K[i] && K[i] < 20;           // J cắt lên K khi K còn thấp
+      const jxDn = J[i - 1] >= K[i - 1] && J[i] < K[i] && K[i] > 80;           // J cắt xuống K khi K còn cao
+      // lọc nhiễu: chỉ báo ở lần đảo chiều đầu tiên, tức là trước đó 8 nến giá đã từng rời khỏi vùng cực (không báo lặp khi KDJ dính mãi ở quá mua/quá bán)
+      const jMax = Math.max(...J.slice(i - 8, i - 1).filter(isN)), jMin = Math.min(...J.slice(i - 8, i - 1).filter(isN));
+      const kMax = Math.max(...K.slice(i - 10, i - 1).filter(isN)), kMin = Math.min(...K.slice(i - 10, i - 1).filter(isN));
+      const freshLow = jMax > 40, freshHigh = jMin < 60;
+      let side = null, level = null, why = '';
+      if (upX && K[i] < 30 && kMax > 50) { side = 'buy'; level = 'confirm'; why = `K (${F0(K[i])}) cắt lên D (${F0(D[i])}) ở vùng thấp: xác nhận đảo chiều tăng`; }
+      else if (dnX && K[i] > 70 && kMin < 50) { side = 'sell'; level = 'confirm'; why = `K (${F0(K[i])}) cắt xuống D (${F0(D[i])}) ở vùng cao: xác nhận đảo chiều giảm`; }
+      else if ((jUp || jxUp) && freshLow) { side = 'buy'; level = 'early'; why = (jUp ? `J chạm vùng quá bán sâu (${F0(J[i - 1])}) rồi quay đầu lên (${F0(J[i])})` : `J (${F0(J[i])}) cắt lên K (${F0(K[i])}) khi K còn thấp`) + ': dấu hiệu sớm, chưa xác nhận'; }
+      else if ((jDn || jxDn) && freshHigh) { side = 'sell'; level = 'early'; why = (jDn ? `J chạm vùng quá mua sâu (${F0(J[i - 1])}) rồi quay đầu xuống (${F0(J[i])})` : `J (${F0(J[i])}) cắt xuống K (${F0(K[i])}) khi K còn cao`) + ': dấu hiệu sớm, chưa xác nhận'; }
+      if (side && isN(atrN)) {
+        const sg = side === 'buy' ? 1 : -1, risk = SLATR * atrN, e = c[n - 1], tr = trendAt(n - 1);
+        kdjAlert = { side, level, why, K: K[i], D: D[i], J: J[i], t: C[n - 1].t, trend: tr, aligned: tr === 0 ? 0 : (tr > 0) === (side === 'buy') ? 1 : -1,
+          entry: e, zoneLo: e - 0.3 * atrN, zoneHi: e + 0.3 * atrN, sl: e - sg * risk, tp: e + sg * RR * risk, rr: RR, slPct: risk / e * 100 };
+      }
+    }
+  }
+
+  return { C, ind, signals, stats, now, zonesNow, zz, ew, ewLast, n, fc, fib: fsNow, kdjAlert, wy };
+}
+
+/* ---------- Hàm tạo dữ liệu mô phỏng giữ lại từ bản gốc; không dùng trong chế độ cổ phiếu ---------- */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* Dữ liệu mô phỏng: sinh MỘT đường giá nền theo nến 15 phút rồi gộp lên 1h/4h/1d,
+   nên cùng một mã thì giá ở các khung luôn khớp nhau (cùng đỉnh, đáy, giá đóng cửa tại cùng thời điểm). */
+const _demoCache = {};
+function genDemo(sym, tfMs, n) {
+  n = n || 1000;
+  const B = 900000, N = 97000, per = Math.max(1, Math.round(tfMs / B));
+  const baseEnd = Math.floor(Date.now() / B) * B, ck = sym + '|' + baseEnd;
+  let bars = _demoCache[ck];
+  if (!bars) {
+    for (const k in _demoCache) delete _demoCache[k];
+    let seed = 7;
+    for (const ch of sym) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const rnd = mulberry32(seed);
+    const gauss = () => { let u = 0, w = 0; while (!u) u = rnd(); while (!w) w = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+    const target = Math.exp(0.5 + rnd() * 8), sigma = 0.003;
+    let p = 1, d1 = 0, l1 = 0, d2 = 0, l2 = 0;
+    bars = new Array(N);
+    for (let i = 0; i < N; i++) {
+      if (l1 <= 0) { d1 = (rnd() - 0.5) * sigma * 0.5; l1 = 40 + Math.floor(rnd() * 80); }       // nhịp ngắn (10–30 giờ)
+      if (l2 <= 0) { d2 = (rnd() - 0.5) * sigma * 0.12; l2 = 3000 + Math.floor(rnd() * 9000); }  // xu hướng chậm (vài tuần)
+      l1--; l2--;
+      const o = p, cc = o * Math.exp(d1 + d2 + sigma * gauss());
+      bars[i] = { t: baseEnd - (N - i) * B, o, c: cc,
+        h: Math.max(o, cc) * (1 + Math.abs(gauss()) * sigma * 0.4), l: Math.min(o, cc) * (1 - Math.abs(gauss()) * sigma * 0.4),
+        v: 1000 * (1 + Math.abs(gauss())) * (rnd() < 0.06 ? 3 : 1) };
+      p = cc;
+    }
+    const f = target / p;                                  // neo giá hiện tại về mức hợp lý
+    for (const k of bars) { k.o *= f; k.h *= f; k.l *= f; k.c *= f; }
+    _demoCache[ck] = bars;
+  }
+  const end = Math.floor(Date.now() / tfMs) * tfMs;        // chỉ lấy nến đã đóng
+  const idxEnd = N - Math.round((baseEnd - end) / B), m = n * per, out = [];
+  for (let i = idxEnd - m; i < idxEnd; i += per) {
+    const g = bars.slice(i, i + per);
+    out.push({ t: g[0].t, o: g[0].o, h: Math.max(...g.map(x => x.h)), l: Math.min(...g.map(x => x.l)), c: g[g.length - 1].c, v: g.reduce((a, x) => a + x.v, 0) });
+  }
+  return out;
+}
+
+if (typeof module !== 'undefined') module.exports = { analyze, wyckoff, genDemo, fmt, sma, ema, rsiW, atrW, calcInd, zigzag, checkImpulse, TYPE_LABEL };
+
+</script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const TFS={'1h':3600000,'1d':86400000,'1w':604800000};
+const LAYERS=[['fc','Dự báo'],['sig','Tín hiệu quá khứ'],['ichi','Ichimoku 2 bộ'],['fib','Fibonacci'],['zones','Vùng giá'],['bb','Bollinger'],['ew','Elliott'],['wy','Wyckoff'],['ema','EMA 50/200'],['macd','MACD'],['kdj','KDJ'],['srsi','StochRSI']];
+const COL={buy:'#0E8A6D',sell:'#C93A52',zone:'#C98A0B',wave:'#4B46B8',ink:'#17222D',mut:'#5B6B7A',line:'#DDE4EA',blue:'#2F7DBE',orange:'#D9822B',purple:'#9B3FA0',ema200:'#8A5A9E'};
+const S={tab:'chart',tf:'1d',sym:'VCB',L:{fc:1,ichi:1,fib:1,sig:1,zones:1,bb:1,ew:1,wy:1,ema:0,macd:1,kdj:1,srsi:1},cache:new Map(),cur:null,selSig:null,selBar:null,
+  top:null,scan:[],filter:'all',onlyPos:false,scanning:false,scannedTf:null,hits:[]};
+const V={barW:9,end:0};
+
+/* ---------- dữ liệu: JSON tĩnh do GitHub Actions tải bằng vnstock (thư mục data/) ---------- */
+let netDownUntil=0,lastErr='',DATA_T=0;
+async function getJSON(path){
+  const r=await fetch('data/'+path,{cache:'no-store'});
+  if(!r.ok)throw new Error(r.status===404?'Chưa có dữ liệu mã/khung này':'HTTP '+r.status);
+  return r.json();
+}
+function toBars(rows){return rows.map(k=>({t:k[0],o:k[1],h:k[2],l:k[3],c:k[4],v:k[5],ct:k[6]}));}
+async function load(sym,tf){
+  const key=sym+'|'+tf,c=S.cache.get(key);if(c&&Date.now()-c.t<60000)return c;
+  let C;
+  try{C=toBars(await getJSON(`${encodeURIComponent(sym)}__${tf}.json`));}catch(e){lastErr=e.message;throw e;}
+  if(C.length<150)throw new Error('Không đủ dữ liệu lịch sử để tính chỉ báo.');
+  let live=null;if(C.length&&Date.now()<C[C.length-1].ct)live=C.pop();
+  const ent={sym,tf,C,live,A:analyze(C),t:Date.now(),demo:false,err:''};S.cache.set(key,ent);return ent;
+}
+async function loadTop(n){
+  if(!S.top){
+    try{
+      const m=await getJSON('meta.json');DATA_T=m.updated;S.groups=m.groups||[];
+      S.top=m.symbols.map(t=>({sym:t.sym,base:t.sym,vol:t.vol,chg:t.chg,tags:t.tags||[]}));
+    }catch(e){S.top=[];S.groups=[];}
+  }
+  $('symList').innerHTML=S.top.map(t=>`<option value="${t.sym}">`).join('');
+  buildSectors();
+  return S.top.slice(0,n);
+}
+function buildSectors(){
+  const bar=$('secBar');if(!bar||bar.dataset.n===String((S.groups||[]).length))return;
+  bar.dataset.n=String((S.groups||[]).length);
+  const cur=S.sector||'all';
+  bar.innerHTML=['all'].concat(S.groups||[]).map(g=>`<button class="chip sm" data-sec="${g}" aria-pressed="${g===cur}">${g==='all'?'Tất cả nhóm':g}</button>`).join(' ');
+  bar.onclick=e=>{const b=e.target.closest('[data-sec]');if(!b)return;S.sector=b.dataset.sec;bar.querySelectorAll('[data-sec]').forEach(x=>x.setAttribute('aria-pressed',x===b));renderScan();};
+}
+
+/* ---------- tiện ích hiển thị ---------- */
+const pad=n=>String(n).padStart(2,'0');
+function fdate(t,full){
+  const d=new Date(t+7*3600000);
+  const s=`${pad(d.getUTCDate())}/${pad(d.getUTCMonth()+1)}`;
+  if(S.tf==='1d') return s+'/'+String(d.getUTCFullYear()).slice(2);
+  return full?`${s} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`:`${s} ${pad(d.getUTCHours())}h`;
+}
+const sideTxt=s=>s==='buy'?'Mua':'Bán';
+const R2=x=>(x>=0?'+':'')+x.toFixed(2)+'R';
+function verdict(now){
+  if(!now.ok) return {cls:'wait',txt:'Chưa đủ đồng thuận'};
+  return now.side==='buy'?{cls:'buy',txt:now.strong?'Dự báo tăng mạnh':'Dự báo tăng'}:{cls:'sell',txt:now.strong?'Dự báo giảm mạnh':'Dự báo giảm'};
+}
+function btBadge(st,oos){
+  if(st.n<20) return {cls:'few',txt:'Mẫu nhỏ, chưa đủ tin'};
+  if(st.exp>0&&oos.n>=5&&oos.exp>0) return {cls:'ok',txt:'Kỳ vọng dương, vượt kiểm tra'};
+  if(st.exp>0) return {cls:'few',txt:'Dương nhưng chưa vượt kiểm tra'};
+  return {cls:'no',txt:'Kỳ vọng âm, không nên theo'};
+}
+
+/* ---------- vẽ biểu đồ ---------- */
+function cl(x,a,b){return Math.max(a,Math.min(b,x));}
+function clampEnd(plotW){
+  const n=S.cur?S.cur.C.length:0; const vis=plotW/V.barW;
+  V.end=cl(V.end,Math.min(n-1,vis*0.5),n-1+Math.floor(vis*0.4));
+}
+function draw(){
+  const cv=$('cv'),wrap=$('wrap');
+  const dpr=window.devicePixelRatio||1,W=wrap.clientWidth,H=wrap.clientHeight;
+  if(!W||!H) return;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  const g=cv.getContext('2d');
+  g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  g.font='12px "Be Vietnam Pro",system-ui,sans-serif';
+  S.hits=[];
+  const E=S.cur;
+  if(!E){g.fillStyle=COL.mut;g.fillText('Đang tải dữ liệu…',16,28);return;}
+  const {C,A}=E,ind=A.ind,n=C.length,AX=66,TX=22,plotW=W-AX;
+  clampEnd(plotW);
+  const bw=V.barW,x=i=>plotW-(V.end-i+0.5)*bw;
+  const i0=Math.max(0,Math.floor(V.end-plotW/bw)-1),i1=Math.min(n-1,Math.ceil(V.end));
+  const subs=['macd','kdj','srsi'].filter(k=>S.L[k]);
+  const subH=subs.length?Math.max(78,Math.floor(H*0.15)):0;
+  const priceH=H-TX-subH*subs.length;
+
+  // thang giá
+  let hi=-Infinity,lo=Infinity;
+  for(let i=i0;i<=i1;i++){if(C[i].h>hi)hi=C[i].h;if(C[i].l<lo)lo=C[i].l;}
+  const LV=E.live&&Math.ceil(V.end)>=n?E.live:null;
+  if(LV){hi=Math.max(hi,LV.h);lo=Math.min(lo,LV.l);}
+  if(!isFinite(hi)){hi=1;lo=0;}
+  const padv=(hi-lo)*0.08||hi*0.01; hi+=padv; lo-=padv;
+  const PT=26,PB=16;
+  const py=p=>PT+(hi-p)/(hi-lo)*(priceH-PT-PB);
+
+  // lưới giá
+  g.lineWidth=1;g.textAlign='left';g.textBaseline='middle';
+  for(let k=0;k<=5;k++){
+    const p=lo+(hi-lo)*k/5,y=py(p);
+    g.strokeStyle=COL.line;g.beginPath();g.moveTo(0,y);g.lineTo(plotW,y);g.stroke();
+    g.fillStyle=COL.mut;g.fillText(fmt(p),plotW+6,y);
+  }
+  g.save();g.beginPath();g.rect(0,0,plotW,priceH);g.clip();
+
+  // Wyckoff: hộp vùng giao dịch, đường biên kéo dài sang phải
+  const WY=(S.L.wy&&A.wy)?A.wy:null;
+  if(WY){
+    const T=WY.tr,xs=x(T.s)-bw/2,xe=x(T.e)+bw/2,yT=py(T.top),yB=py(T.bot),yM=py(T.mid);
+    const wc=WY.kind==='acc'?'14,138,109':WY.kind==='dist'?'201,58,82':'91,107,122';
+    g.fillStyle=`rgba(${wc},0.07)`;g.fillRect(xs,yT,xe-xs,yB-yT);
+    g.strokeStyle=`rgba(${wc},0.8)`;g.lineWidth=1.4;g.setLineDash([]);g.strokeRect(xs,yT,xe-xs,yB-yT);
+    g.setLineDash([6,4]);g.beginPath();g.moveTo(xe,yT);g.lineTo(plotW,yT);g.moveTo(xe,yB);g.lineTo(plotW,yB);g.stroke();
+    g.strokeStyle=`rgba(${wc},0.4)`;g.setLineDash([2,4]);g.beginPath();g.moveTo(xs,yM);g.lineTo(plotW,yM);g.stroke();g.setLineDash([]);
+    const kn=WY.kind==='acc'?(WY.re?'Tái tích lũy':'Tích lũy'):WY.kind==='dist'?(WY.re?'Tái phân phối':'Phân phối'):'Đi ngang';
+    g.font='bold 12px \"Be Vietnam Pro\",system-ui,sans-serif';g.fillStyle=`rgb(${wc})`;g.textAlign='left';g.textBaseline='top';
+    g.fillText(`Wyckoff · ${kn}${WY.phase?' · Pha '+WY.phase:''}`,Math.max(6,xs+6),Math.max(PT-8,yT+4));
+    g.font='12px \"Be Vietnam Pro\",system-ui,sans-serif';
+  }
+  // vùng hỗ trợ/kháng cự
+  if(S.L.zones){
+    const last=C[n-1].c;
+    for(const z of A.zonesNow){
+      if(z.hi<lo||z.lo>hi) continue;
+      const y1=py(Math.min(z.hi,hi)),y2=py(Math.max(z.lo,lo));
+      g.fillStyle='rgba(201,138,11,0.13)';g.fillRect(0,y1,plotW,Math.max(2,y2-y1));
+      g.strokeStyle='rgba(201,138,11,0.55)';g.setLineDash([5,4]);
+      g.beginPath();g.moveTo(0,y1);g.lineTo(plotW,y1);g.moveTo(0,y2);g.lineTo(plotW,y2);g.stroke();g.setLineDash([]);
+      g.fillStyle='#8A5D00';g.textBaseline='bottom';
+      g.fillText(`${z.mid>last?'Kháng cự':'Hỗ trợ'} ×${z.touches}`,8,y1-2);
+    }
+  }
+  // Bollinger Bands
+  if(S.L.bb){
+    const ok=[];for(let i=i0;i<=i1;i++)if(isFinite(ind.bbUp[i]))ok.push(i);
+    if(ok.length>1){
+      g.fillStyle='rgba(47,125,190,0.08)';g.beginPath();
+      ok.forEach((i,k)=>{k?g.lineTo(x(i),py(ind.bbUp[i])):g.moveTo(x(i),py(ind.bbUp[i]));});
+      for(let k=ok.length-1;k>=0;k--)g.lineTo(x(ok[k]),py(ind.bbLo[ok[k]]));
+      g.closePath();g.fill();
+      for(const [arr,col,dash] of [[ind.bbUp,'rgba(47,125,190,0.85)',[]],[ind.bbLo,'rgba(47,125,190,0.85)',[]],[ind.bbMid,'rgba(90,107,122,0.7)',[4,4]]]){
+        g.strokeStyle=col;g.lineWidth=1.2;g.setLineDash(dash);g.beginPath();
+        ok.forEach((i,k)=>{k?g.lineTo(x(i),py(arr[i])):g.moveTo(x(i),py(arr[i]));});g.stroke();
+      }
+      g.setLineDash([]);
+    }
+  }
+  // Ichimoku: mây (kéo dài 26 nến về tương lai), Tenkan, Kijun
+  if(S.L.ichi){
+    const iE=Math.min(n+25,Math.ceil(V.end)),A_=ind.spanA,B_=ind.spanB;
+    for(let i=Math.max(0,i0);i<iE;i++){
+      if(!isFinite(A_[i])||!isFinite(B_[i])||!isFinite(A_[i+1])||!isFinite(B_[i+1])) continue;
+      g.fillStyle=A_[i]>=B_[i]?'rgba(14,138,109,.13)':'rgba(201,58,82,.13)';
+      g.beginPath();g.moveTo(x(i),py(A_[i]));g.lineTo(x(i+1),py(A_[i+1]));g.lineTo(x(i+1),py(B_[i+1]));g.lineTo(x(i),py(B_[i]));g.closePath();g.fill();
+    }
+    for(const [arr,col,lw,e] of [[A_,'rgba(14,138,109,.55)',1,iE],[B_,'rgba(201,58,82,.55)',1,iE],[ind.tenkanLong,'#2878D0',1.8,i1],[ind.kijunLong,'#E5A323',1.8,i1]]){
+      g.strokeStyle=col;g.lineWidth=lw;g.beginPath();let st=false;
+      for(let i=Math.max(0,i0);i<=e;i++){const v=arr[i];if(!isFinite(v)){st=false;continue;}if(!st){g.moveTo(x(i),py(v));st=true;}else g.lineTo(x(i),py(v));}
+      g.stroke();
+    }
+  }
+  // Fibonacci retracement / extension của nhịp sóng gần nhất
+  if(S.L.fib&&A.fib){
+    const fs=A.fib,xa=Math.max(4,x(fs.a.j)),lb=r=>'Fib '+(r*100).toFixed(1).replace('.0','')+'%';
+    const y5=py(fs.lv(0.5)),y6=py(fs.lv(0.618));
+    g.fillStyle='rgba(155,63,160,.10)';g.fillRect(xa,Math.min(y5,y6),plotW-xa,Math.abs(y6-y5));
+    g.font='11px "Be Vietnam Pro",system-ui,sans-serif';g.textAlign='left';g.textBaseline='bottom';g.lineWidth=1;
+    for(const r of [0,0.236,0.382,0.5,0.618,0.786,1,1.272,1.618]){
+      const y=py(r>1?fs.ex(r):fs.lv(r));
+      g.strokeStyle='rgba(155,63,160,.55)';g.setLineDash(r===0||r===1?[]:[3,3]);
+      g.beginPath();g.moveTo(xa,y);g.lineTo(plotW,y);g.stroke();
+      g.fillStyle='#7A2E80';g.fillText(lb(r)+(r>1?' (mục tiêu mở rộng)':''),xa+4,y-1);
+    }
+    g.setLineDash([]);g.font='12px "Be Vietnam Pro",system-ui,sans-serif';
+  }
+  // nến
+  for(let i=i0;i<=i1;i++){
+    const k=C[i],xc=x(i),up=k.c>=k.o;
+    g.strokeStyle=g.fillStyle=up?COL.buy:COL.sell;
+    g.lineWidth=1;g.beginPath();g.moveTo(xc,py(k.h));g.lineTo(xc,py(k.l));g.stroke();
+    const bwid=Math.max(1,bw*0.68),yo=py(k.o),yc=py(k.c);
+    g.fillRect(xc-bwid/2,Math.min(yo,yc),bwid,Math.max(1,Math.abs(yo-yc)));
+  }
+  // nến đang chạy (chưa đóng): vẽ mờ, không dùng cho phân tích
+  if(LV){
+    const xc=x(n),up=LV.c>=LV.o,col=up?COL.buy:COL.sell,bwid=Math.max(1,bw*0.68),yo=py(LV.o),yc=py(LV.c);
+    g.strokeStyle=g.fillStyle=col;g.globalAlpha=0.55;g.lineWidth=1;
+    g.beginPath();g.moveTo(xc,py(LV.h));g.lineTo(xc,py(LV.l));g.stroke();
+    g.fillRect(xc-bwid/2,Math.min(yo,yc),bwid,Math.max(1,Math.abs(yo-yc)));g.globalAlpha=1;
+  }
+  // EMA
+  if(S.L.ema){
+    for(const [arr,col] of [[ind.ema50,COL.blue],[ind.ema200,COL.ema200]]){
+      g.strokeStyle=col;g.lineWidth=1.6;g.beginPath();let st=false;
+      for(let i=i0;i<=i1;i++){const v=arr[i];if(!isFinite(v)){st=false;continue;}if(!st){g.moveTo(x(i),py(v));st=true;}else g.lineTo(x(i),py(v));}
+      g.stroke();
+    }
+  }
+  // Elliott
+  if(S.L.ew){
+    g.strokeStyle='rgba(75,70,184,0.28)';g.lineWidth=1;g.setLineDash([3,4]);g.beginPath();
+    A.zz.piv.forEach((q,k)=>{const xx=x(q.j),yy=py(q.p);k?g.lineTo(xx,yy):g.moveTo(xx,yy);});
+    if(A.zz.tent) g.lineTo(x(A.zz.tent.j),py(A.zz.tent.p));
+    g.stroke();g.setLineDash([]);
+    const ev=S.selEw||A.ewLast;
+    if(ev){
+      g.strokeStyle=COL.wave;g.lineWidth=2.2;g.beginPath();
+      ev.pts.forEach((q,k)=>{const xx=x(q.j),yy=py(q.p);k?g.lineTo(xx,yy):g.moveTo(xx,yy);});g.stroke();
+      g.textAlign='center';g.font='bold 12px "Be Vietnam Pro",system-ui,sans-serif';
+      ev.pts.forEach((q,k)=>{
+        const xx=x(q.j),isH=q.t==='H',yy=py(q.p)+(isH?-13:13);
+        g.fillStyle='#fff';g.strokeStyle=COL.wave;g.lineWidth=1.5;g.beginPath();g.arc(xx,yy,9,0,7);g.fill();g.stroke();
+        g.fillStyle=COL.wave;g.textBaseline='middle';g.fillText(String(k),xx,yy+0.5);
+      });
+      g.font='12px "Be Vietnam Pro",system-ui,sans-serif';
+      if(ev.kind==='w5'&&isFinite(ev.target)){
+        const yT=py(ev.target),lp=ev.pts[ev.pts.length-1];
+        g.strokeStyle=COL.wave;g.setLineDash([2,4]);g.lineWidth=1.4;g.beginPath();g.moveTo(x(lp.j),yT);g.lineTo(plotW,yT);g.stroke();g.setLineDash([]);
+        g.fillStyle=COL.wave;g.textAlign='right';g.textBaseline='bottom';g.fillText('Mục tiêu sóng 5 ~'+fmt(ev.target),plotW-6,yT-2);
+      }
+    }
+  }
+  // Wyckoff: nhãn sự kiện (SC, AR, ST, Spring, Test, SOS, LPS / BC, UT, SOW, LPSY)
+  if(WY){
+    const wc=WY.kind==='acc'?COL.buy:WY.kind==='dist'?COL.sell:COL.mut;
+    g.font='bold 11px \"Be Vietnam Pro\",system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
+    for(const ev of WY.events){
+      if(ev.i<i0||ev.i>i1) continue;
+      const xx=x(ev.i),lw=ev.pos==='lo',y0=py(ev.p),yy=y0+(lw?17:-17),w=g.measureText(ev.label).width+10;
+      g.strokeStyle=wc;g.lineWidth=1;g.beginPath();g.moveTo(xx,y0+(lw?2:-2));g.lineTo(xx,yy+(lw?-9:9));g.stroke();
+      g.fillStyle='#fff';g.lineWidth=1.4;g.beginPath();
+      if(g.roundRect) g.roundRect(xx-w/2,yy-9,w,18,5); else g.rect(xx-w/2,yy-9,w,18);
+      g.fill();g.stroke();
+      g.fillStyle=wc;g.fillText(ev.label,xx,yy+0.5);
+    }
+    g.font='12px \"Be Vietnam Pro\",system-ui,sans-serif';
+  }
+  // điểm mua bán
+  const sig=S.L.sig?A.signals.filter(s=>s.i>=i0&&s.i<=i1):[];
+  g.textAlign='center';
+  for(const s of sig){
+    const k=C[s.i],xc=x(s.i),buy=s.side==='buy';
+    const ty=buy?Math.min(py(k.l)+6,priceH-30):Math.max(py(k.h)-6,30);
+    g.fillStyle=buy?COL.buy:COL.sell;g.beginPath();
+    if(buy){g.moveTo(xc,ty);g.lineTo(xc-7,ty+12);g.lineTo(xc+7,ty+12);}
+    else{g.moveTo(xc,ty);g.lineTo(xc-7,ty-12);g.lineTo(xc+7,ty-12);}
+    g.closePath();g.fill();
+    g.font='bold 11px "Be Vietnam Pro",system-ui,sans-serif';g.textBaseline='middle';
+    g.fillText(String(s.strength),xc,buy?ty+22:ty-22);
+    S.hits.push({x:xc,y:buy?ty+8:ty-8,s});
+  }
+  g.font='12px "Be Vietnam Pro",system-ui,sans-serif';
+  // tín hiệu đang chọn: vào lệnh, cắt lỗ, chốt lời
+  const sel=S.selSig;
+  if(sel&&S.L.sig){
+    const xs=x(sel.i),xe=x(sel.res.exit!=null?sel.res.exit:Math.min(n-1,sel.i+25));
+    const lines=[[sel.tp,COL.buy,'Chốt lời'],[sel.entry,COL.ink,'Vào lệnh'],[sel.sl,COL.sell,'Cắt lỗ']];
+    for(const [p,col,lb] of lines){
+      const y=py(p);g.strokeStyle=col;g.lineWidth=1.5;g.setLineDash(lb==='Vào lệnh'?[]:[6,4]);
+      g.beginPath();g.moveTo(xs,y);g.lineTo(Math.max(xe,xs+40),y);g.stroke();g.setLineDash([]);
+      const txt=`${lb} ${fmt(p)}`,lx=Math.max(xe,xs+40)+5,tw=g.measureText(txt).width;
+      g.fillStyle='rgba(253,254,254,.92)';g.fillRect(lx-3,y-9,tw+8,18);
+      g.fillStyle=col;g.textAlign='left';g.textBaseline='middle';g.fillText(txt,lx+1,y);
+    }
+    const k=C[sel.i];
+    g.strokeStyle=sel.side==='buy'?COL.buy:COL.sell;g.lineWidth=2;g.beginPath();
+    g.arc(xs,sel.side==='buy'?Math.min(py(k.l)+14,priceH-24):Math.max(py(k.h)-14,24),17,0,7);g.stroke();
+    if(sel.res.exit!=null){
+      g.fillStyle=sel.res.status==='tp'?COL.buy:sel.res.status==='sl'?COL.sell:COL.mut;
+      g.beginPath();g.arc(x(sel.res.exit),py(sel.res.status==='tp'?sel.tp:sel.res.status==='sl'?sel.sl:C[sel.res.exit].c),5,0,7);g.fill();
+    }
+  }
+  // giá hiện tại
+  const lastC=C[n-1];
+  const pxNow=LV?LV.c:lastC.c,upNow=LV?LV.c>=LV.o:lastC.c>=lastC.o;
+  g.strokeStyle=upNow?COL.buy:COL.sell;g.setLineDash([2,3]);g.lineWidth=1;
+  g.beginPath();g.moveTo(0,py(pxNow));g.lineTo(plotW,py(pxNow));g.stroke();g.setLineDash([]);
+  // dự báo cho các nến sắp tới (chưa xảy ra)
+  if(S.L.fc&&A.fc){
+    const fc=A.fc,x0=x(n-1),y0=py(lastC.c),xe=plotW-6;
+    g.font='bold 12px "Be Vietnam Pro",system-ui,sans-serif';g.textBaseline='middle';
+    if(fc.dir==='wait'){
+      g.fillStyle=COL.mut;g.textAlign='left';g.fillText('Dự báo: chưa rõ hướng',Math.max(8,Math.min(x0+10,plotW-150)),PT+10);
+    }else if(xe>x0+40){
+      const buy=fc.dir==='buy',col=buy?COL.buy:COL.sell,yT=py(fc.tp1),yS=py(fc.sl),y2=py(fc.tp2);
+      g.fillStyle=buy?'rgba(14,138,109,.11)':'rgba(201,58,82,.11)';
+      g.beginPath();g.moveTo(x0,y0);g.lineTo(xe,yT);g.lineTo(xe,y2);g.closePath();g.fill();
+      g.fillStyle='rgba(201,58,82,.07)';g.beginPath();g.moveTo(x0,y0);g.lineTo(xe,yS);g.lineTo(xe,y0);g.closePath();g.fill();
+      g.font='11.5px "Be Vietnam Pro",system-ui,sans-serif';g.textAlign='right';g.textBaseline='bottom';g.lineWidth=1.2;
+      for(const [p,cc,lb] of [[fc.tp2,col,'Mục tiêu 2'],[fc.tp1,col,'Mục tiêu 1'],[fc.sl,COL.sell,'Cắt lỗ nếu sai']]){
+        const y=py(p);g.strokeStyle=cc;g.setLineDash([5,4]);g.beginPath();g.moveTo(x0,y);g.lineTo(plotW,y);g.stroke();g.setLineDash([]);
+        const t=`${lb} ${fmt(p)}`,tw=g.measureText(t).width;
+        g.fillStyle='rgba(253,254,254,.9)';g.fillRect(plotW-tw-8,y-16,tw+8,15);g.fillStyle=cc;g.fillText(t,plotW-4,y-3);
+      }
+      const ax=xe-4,ang=Math.atan2(yT-y0,ax-x0);
+      g.strokeStyle=col;g.fillStyle=col;g.lineWidth=2.6;g.beginPath();g.moveTo(x0,y0);g.lineTo(ax,yT);g.stroke();
+      g.beginPath();g.moveTo(ax,yT);g.lineTo(ax-11*Math.cos(ang-0.45),yT-11*Math.sin(ang-0.45));g.lineTo(ax-11*Math.cos(ang+0.45),yT-11*Math.sin(ang+0.45));g.closePath();g.fill();
+      g.font='bold 12px "Be Vietnam Pro",system-ui,sans-serif';g.textAlign='left';g.textBaseline='middle';
+      const tag=buy?'Dự báo tăng':'Dự báo giảm',tw=g.measureText(tag).width,ty=buy?y0+14:y0-32;
+      g.fillStyle=col;g.fillRect(x0+8,ty,tw+12,19);g.fillStyle='#fff';g.fillText(tag,x0+14,ty+10);
+    }
+    g.font='12px "Be Vietnam Pro",system-ui,sans-serif';
+  }
+  g.restore();
+  g.fillStyle=upNow?COL.buy:COL.sell;g.fillRect(plotW,py(pxNow)-9,AX,18);
+  g.fillStyle='#fff';g.textAlign='left';g.textBaseline='middle';g.fillText(fmt(pxNow),plotW+5,py(pxNow));
+
+  // thanh chọn nến
+  const sb=S.selBar!=null?S.selBar:n-1;
+  // các khung chỉ báo
+  const row=(k,top)=>{
+    g.strokeStyle=COL.line;g.lineWidth=1;g.beginPath();g.moveTo(0,top);g.lineTo(W,top);g.stroke();
+    g.save();g.beginPath();g.rect(0,top,plotW,subH);g.clip();
+    const pad=8,yy=(v,a,b)=>top+pad+(b-v)/(b-a)*(subH-pad*2);
+    const line=(arr,col,a,b)=>{g.strokeStyle=col;g.lineWidth=1.6;g.beginPath();let st=false;
+      for(let i=i0;i<=i1;i++){const v=arr[i];if(!isFinite(v)){st=false;continue;}const Y=yy(cl(v,a,b),a,b);if(!st){g.moveTo(x(i),Y);st=true;}else g.lineTo(x(i),Y);}g.stroke();};
+    let title='',vals='';
+    const f1=v=>isFinite(v)?v.toFixed(1):'–';
+    const sf=v=>!isFinite(v)?'–':Math.abs(v)>=100?v.toFixed(1):String(Number(v.toPrecision(3)));
+    if(k==='macd'){
+      let m=0;for(let i=i0;i<=i1;i++)for(const a of [ind.macd[i],ind.sig[i],ind.hist[i]])if(isFinite(a))m=Math.max(m,Math.abs(a));
+      m=m||1;const a=-m*1.1,b=m*1.1;
+      g.strokeStyle='#B8C3CD';g.beginPath();g.moveTo(0,yy(0,a,b));g.lineTo(plotW,yy(0,a,b));g.stroke();
+      for(let i=i0;i<=i1;i++){const h=ind.hist[i];if(!isFinite(h))continue;
+        g.fillStyle=h>=0?'rgba(14,138,109,.55)':'rgba(201,58,82,.55)';
+        const y0=yy(0,a,b),y1=yy(h,a,b);g.fillRect(x(i)-bw*0.3,Math.min(y0,y1),Math.max(1,bw*0.6),Math.abs(y1-y0));}
+      line(ind.macd,COL.blue,a,b);line(ind.sig,COL.orange,a,b);
+      title='MACD 12·26·9';vals=`MACD ${sf(ind.macd[sb])}   Tín hiệu ${sf(ind.sig[sb])}   Hist ${sf(ind.hist[sb])}`;
+    }else{
+      const a=-15,b=115;
+      g.fillStyle='rgba(14,138,109,.07)';g.fillRect(0,yy(20,a,b),plotW,yy(0,a,b)-yy(20,a,b));
+      g.fillStyle='rgba(201,58,82,.07)';g.fillRect(0,yy(100,a,b),plotW,yy(80,a,b)-yy(100,a,b));
+      g.strokeStyle='#B8C3CD';g.setLineDash([4,4]);g.beginPath();
+      for(const lv of (k==='kdj'?[20,80]:[20,80])){g.moveTo(0,yy(lv,a,b));g.lineTo(plotW,yy(lv,a,b));}g.stroke();g.setLineDash([]);
+      if(k==='kdj'){line(ind.K,COL.orange,a,b);line(ind.D,COL.blue,a,b);line(ind.J,COL.purple,a,b);
+        title='KDJ 9·3·3';vals=`K ${f1(ind.K[sb])}   D ${f1(ind.D[sb])}   J ${f1(ind.J[sb])}`;}
+      else{line(ind.sk,COL.orange,a,b);line(ind.sd,COL.blue,a,b);
+        title='StochRSI 14·14·3·3';vals=`%K ${f1(ind.sk[sb])}   %D ${f1(ind.sd[sb])}`;}
+    }
+    // vạch gióng các điểm mua bán để thấy sự đồng thuận
+    for(const s of sig){g.strokeStyle=s.side==='buy'?'rgba(14,138,109,.35)':'rgba(201,58,82,.35)';g.lineWidth=1;g.beginPath();g.moveTo(x(s.i),top);g.lineTo(x(s.i),top+subH);g.stroke();}
+    g.restore();
+    g.textAlign='left';g.textBaseline='top';g.fillStyle=COL.ink;g.font='bold 12px "Be Vietnam Pro",system-ui,sans-serif';g.fillText(title,8,top+4);
+    g.font='12px "Be Vietnam Pro",system-ui,sans-serif';g.fillStyle=COL.mut;g.font='bold 12px "Be Vietnam Pro",system-ui,sans-serif';const tw0=g.measureText(title).width;g.font='12px "Be Vietnam Pro",system-ui,sans-serif';g.fillText(vals,8+tw0+18,top+4);
+  };
+  subs.forEach((k,idx)=>row(k,priceH+idx*subH));
+
+  // trục thời gian
+  const ty0=H-TX;g.fillStyle=COL.mut;g.textAlign='center';g.textBaseline='middle';
+  g.strokeStyle=COL.line;g.beginPath();g.moveTo(0,ty0);g.lineTo(W,ty0);g.stroke();
+  const stepBars=Math.max(1,Math.ceil(100/bw));
+  const first=Math.ceil(i0/stepBars)*stepBars;
+  for(let i=first;i<=i1;i+=stepBars){const xx=x(i);if(xx<20||xx>plotW-20)continue;g.fillText(fdate(C[i].t),xx,ty0+11);}
+
+  // thanh chọn + thông tin nến
+  const kk=C[sb],xb=x(sb);
+  if(S.selBar!=null&&xb>=0&&xb<=plotW){
+    g.strokeStyle='rgba(23,34,45,.45)';g.setLineDash([3,3]);g.lineWidth=1;g.beginPath();g.moveTo(xb,0);g.lineTo(xb,H-TX);g.stroke();g.setLineDash([]);
+  }
+  g.textAlign='left';g.textBaseline='top';g.fillStyle=COL.ink;g.font='bold 13px "Be Vietnam Pro",system-ui,sans-serif';
+  const head=`${E.sym} ${S.tf}`;g.fillText(head,8,6);
+  const hw=g.measureText(head).width;
+  g.font='12px "Be Vietnam Pro",system-ui,sans-serif';g.fillStyle=COL.mut;
+  g.fillText(`${fdate(kk.t,true)}   Mở ${fmt(kk.o)}   Cao ${fmt(kk.h)}   Thấp ${fmt(kk.l)}   Đóng ${fmt(kk.c)}`,16+hw,7);
+}
+
+/* ---------- cột bên phải ---------- */
+function renderAside(){
+  const E=S.cur,el=$('aside');
+  if(!E){el.innerHTML='';return;}
+  const A=E.A,C=E.C,n=C.length,now=A.now,vd=verdict(now);
+  const sel=S.selSig||A.signals[A.signals.length-1]||null;
+  let h='';
+
+  // dự báo cho các nến sắp tới
+  const fc=A.fc,fcCls=fc.dir==='wait'?'wait':fc.dir,hrs=fc.horizon*TFS[S.tf]/3600000,hz=hrs<48?Math.round(hrs)+' giờ':Math.round(hrs/24)+' ngày';
+  h+=`<div class="card ticket ${fc.dir==='wait'?'':fc.dir}">
+    <div class="tk-head"><b class="${fc.dir==='buy'?'up':fc.dir==='sell'?'dn':''}">Dự báo: ${fc.dir==='buy'?'nghiêng TĂNG':fc.dir==='sell'?'nghiêng GIẢM':'chưa rõ hướng'}${fc.strong?' (mạnh)':''}</b><span class="mut">sau nến đóng ${fdate(C[n-1].t,true)}${E.live?' · giá hiện tại '+fmt(E.live.c):''}</span></div>
+    <div style="margin-top:4px"><span class="meter ${fcCls}"><i style="width:${fc.pct}%"></i></span> <b>${fc.pct}/100</b> <span class="mut">độ nghiêng của chỉ báo</span></div>
+    ${fc.dir!=='wait'?`<div class="lv">
+      <span>Vùng vào dự kiến</span><span>${fmt(fc.zoneLo)}–${fmt(fc.zoneHi)}</span><span></span>
+      <span>Mục tiêu 1</span><span class="up">${fmt(fc.tp1)}</span><span>R:R 1:${fc.rr}</span>
+      <span>Mục tiêu 2</span><span class="up">${fmt(fc.tp2)}</span><span>${fc.tp2Src}</span>
+      <span>Cắt lỗ nếu sai</span><span class="dn">${fmt(fc.sl)}</span><span>${fc.slPct.toFixed(2)}%</span></div>`:''}
+    ${A.kdjAlert?`<div style="margin:8px 0;padding:7px 9px;border-radius:8px;background:rgba(155,63,160,.10);font-size:13px">⚡ <b>KDJ ${A.kdjAlert.level==='early'?'cảnh báo sớm':'xác nhận'}: đảo chiều ${A.kdjAlert.side==='buy'?'tăng':'giảm'}</b><br>${A.kdjAlert.why}</div>`:''}
+    <p class="note">Kịch bản cho khoảng ${fc.horizon} nến tới (~${hz}). Đây là ước tính từ trạng thái hiện tại của các chỉ báo, chưa phải kết quả đã xảy ra; giá có thể đi ngược dự báo nên luôn cần cắt lỗ.${fc.confirmed?' Các nến gần nhất còn có điểm vào đồng thuận cùng hướng.':''}</p>
+    <b>Các chỉ báo đang nghiêng thế nào</b>
+    <ul class="why">${fc.votes.map(v=>`<li><span class="pts ${v.v<0?'m':'p'}">${v.v>0?'+':''}${v.v.toFixed(1)}</span><span><span class="tg">${TYPE_LABEL[v.type]}</span>${v.txt}</span></li>`).join('')}</ul>
+    <div class="total"><span>Tổng độ nghiêng</span><span>${fc.bias>0?'+':''}${fc.bias.toFixed(1)} / ${fc.max.toFixed(1)}</span></div>
+  </div>`;
+
+  // thẻ lý do
+  if(sel){
+    const buy=sel.side==='buy',r=sel.res,age=n-1-sel.i;
+    const resHtml=r.status==='tp'?`<div class="res win">Đối chiếu sau đó: chạm chốt lời sau ${r.bars} nến, ${R2(r.R)}</div>`:
+      r.status==='sl'?`<div class="res loss">Đối chiếu sau đó: chạm cắt lỗ sau ${r.bars} nến, ${R2(r.R)}</div>`:
+      r.status==='time'?`<div class="res ${r.R>0?'win':'loss'}">Đối chiếu sau đó: hết ${r.bars} nến chưa chạm mốc nào, đóng lệnh ${R2(r.R)}</div>`:
+      `<div class="res flat">Chưa có kết quả, đang chờ diễn biến</div>`;
+    h+=`<div class="card ticket ${sel.side}">
+      <div class="tk-head"><b class="${buy?'up':'dn'}">Tín hiệu ${buy?'mua':'bán'} (${age===0?'vừa xuất hiện':'trong quá khứ'})</b><span class="mut">${fdate(sel.t,true)}${age===0?', nến vừa đóng':`, cách ${age} nến`}</span></div>
+      <div style="margin-top:4px"><span class="meter ${sel.side}"><i style="width:${sel.strength}%"></i></span> <b>${sel.strength}/100</b> <span class="mut">độ đồng thuận</span></div>
+      <div class="lv">
+        <span>Vào lệnh</span><span>${fmt(sel.entry)}</span><span></span>
+        <span>Cắt lỗ</span><span class="dn">${fmt(sel.sl)}</span><span>${(sel.risk/sel.entry*100).toFixed(2)}%</span>
+        <span>Chốt lời</span><span class="up">${fmt(sel.tp)}</span><span>R:R 1:${sel.rr}</span>
+      </div>
+      <b>Vì sao có điểm ${buy?'mua':'bán'} này</b>
+      <ul class="why">${sel.items.map(it=>`<li><span class="pts ${it.pts<0?'m':'p'}">${it.pts>0?'+':''}${it.pts.toFixed(1)}</span>
+        <span><span class="tg">${TYPE_LABEL[it.type]}${it.j<sel.i?` <span class="mut" style="font-weight:400">(trước ${sel.i-it.j} nến)</span>`:''}</span>${it.txt}</span></li>`).join('')}</ul>
+      <div class="total"><span>Tổng điểm</span><span>${sel.score.toFixed(1)}</span></div>
+      ${resHtml}
+      <p class="note">Mũi tên là các lần chỉ báo đồng thuận trong quá khứ; phần đối chiếu chỉ để kiểm chứng độ chính xác. Chạm vào mũi tên để xem lý do.</p>
+    </div>`;
+  }else h+=`<div class="card"><h3>Chưa có điểm mua bán</h3><p class="note">Trong dữ liệu này chưa có thời điểm nào đủ đồng thuận.</p></div>`;
+
+  // backtest
+  const st=A.stats,bd=btBadge(st.all,st.oos);
+  const row=(a,b)=>`<span>${a}</span><b>${b}</b>`;
+  h+=`<div class="card"><h3>Backtest ${E.sym} khung ${S.tf}</h3>
+    <span class="badge ${bd.cls}" style="margin:0 0 8px">${bd.txt}</span>
+    <div class="kv">${row('Số lệnh',st.all.n+` (mua ${st.buy.n}, bán ${st.sell.n})`)}
+    ${row('Tỷ lệ thắng',(st.all.wr*100).toFixed(0)+'%')}
+    ${row('Kỳ vọng mỗi lệnh',st.all.n?R2(st.all.exp):'–')}
+    ${row('Profit factor',st.all.n?(isFinite(st.all.pf)?st.all.pf.toFixed(2):'∞'):'–')}
+    ${row('Sụt giảm tối đa',st.all.dd.toFixed(1)+'R')}
+    ${row('30% dữ liệu mới nhất',st.oos.n?`${st.oos.n} lệnh, ${R2(st.oos.exp)}`:'chưa có lệnh')}</div>
+    <p class="note">Kỳ vọng = tỷ lệ thắng × lãi trung bình − tỷ lệ thua × lỗ trung bình, tính theo R (1R = mức rủi ro mỗi lệnh). Thắng nhiều chưa chắc có lãi. Cần từ 20 lệnh trở lên và kỳ vọng dương ở cả phần dữ liệu mới nhất mới đáng tin.</p></div>`;
+
+  // Elliott
+  const ev=A.ewLast;
+  h+=`<div class="card"><h3>Sóng Elliott</h3>`+(ev?
+    `<p><span class="pill ${ev.side}">${ev.kind==='w5'?'Có thể đang vào sóng 5':'Sóng 5 có thể đã xong'}</span></p><p style="font-size:14px">${ev.text}</p>
+     <p class="note">Nhận diện bằng quy tắc cứng (sóng 2 không thủng đáy sóng 1, sóng 3 không ngắn nhất, sóng 4 không chồng sóng 1). Elliott mang tính chủ quan cao nên chỉ cộng tối đa 1,5 điểm.</p>`:
+    `<p class="note">Chưa thấy cấu trúc 5 sóng hợp lệ trong dữ liệu.</p>`)+`</div>`;
+
+  // Wyckoff
+  const wy=A.wy;
+  if(wy){
+    const kn=wy.kind==='acc'?(wy.re?'Tái tích lũy':'Tích lũy'):wy.kind==='dist'?(wy.re?'Tái phân phối':'Phân phối'):'Đi ngang';
+    h+=`<div class="card"><h3>Phân tích Wyckoff</h3>
+      <p><span class="pill ${wy.lean}">${kn}${wy.phase?' · Pha '+wy.phase:''}</span> <span class="mut">khớp mẫu ${wy.score}%</span></p>
+      <p style="font-size:14px">${wy.summary}</p>
+      <div class="kv"><span>Biên trên / dưới</span><b>${fmt(wy.tr.top)} / ${fmt(wy.tr.bot)}</b>
+        <span>${wy.trigger.txt}</span><b>${fmt(wy.trigger.p)}</b>
+        <span>${wy.inval.txt}</span><b>${fmt(wy.inval.p)}</b></div>
+      ${wy.events.length?`<div style="margin-top:8px">${wy.events.slice().sort((a,b)=>b.i-a.i).map(ev=>`<div style=\"padding:6px 0;border-top:1px dashed var(--line)\"><b>${ev.label}</b> <span class=\"mut\">${fdate(C[ev.i].t,true)} · ${fmt(ev.p)}</span><div style=\"font-size:13px\">${ev.txt}</div></div>`).join('')}</div>`:''}
+      ${wy.notes.length?`<p class="note">${wy.notes.join(' ')}</p>`:''}
+      <p class="note">Wyckoff đọc cấu trúc giá và volume nên mang tính chủ quan. Ở đây vùng đi ngang được tìm bằng quy tắc (biên chạm nhiều lần, giá cắt đường giữa nhiều lần), sự kiện dò theo volume và biên độ nến. Phần này chỉ để quan sát trên biểu đồ, không tính vào điểm tín hiệu và backtest.</p></div>`;
+  }else{
+    h+=`<div class="card"><h3>Phân tích Wyckoff</h3><p class="note">Chưa thấy vùng đi ngang đủ rõ (tối thiểu 30 nến, chạm cả hai biên từ 2 lần). Giá đang ở trạng thái xu hướng hoặc biên quá rộng.</p></div>`;
+  }
+
+  // vùng giá
+  const last=E.live?E.live.c:C[n-1].c,zs=A.zonesNow.slice().sort((a,b)=>Math.abs(a.mid-last)-Math.abs(b.mid-last)).slice(0,5).sort((a,b)=>b.mid-a.mid);
+  h+=`<div class="card"><h3>Vùng giá gần nhất</h3>`+(zs.length?`<div class="kv">${zs.map(z=>`<span class="${z.mid>last?'dn':'up'}">${z.mid>last?'Kháng cự':'Hỗ trợ'} (${z.touches} lần chạm)</span><b>${fmt(z.lo)}–${fmt(z.hi)}</b>`).join('')}</div>`:`<p class="note">Chưa xác định được vùng nào.</p>`)+`</div>`;
+
+  // danh sách tín hiệu
+  const rec=A.signals.slice(-12).reverse();
+  h+=`<div class="card"><h3>Tín hiệu gần đây</h3><ul class="list">${rec.map(s=>`<li><button data-sig="${s.i}" ${sel&&sel.i===s.i?'aria-current="true"':''}>
+    <span><b class="${s.side==='buy'?'up':'dn'}">${sideTxt(s.side)}</b> <span class="mut">${fdate(s.t,true)}</span></span>
+    <span>${s.res.status==='open'?'đang mở':R2(s.res.R)}</span></button></li>`).join('')||'<li class="note">Chưa có.</li>'}</ul></div>`;
+  el.innerHTML=h;
+}
+
+/* ---------- màn hình Bộ lọc ---------- */
+function wyTag(w){
+  if(!w||!w.kind||w.kind==='unk') return w&&w.kind==='unk'?'<span class="tg2 neu">Wyckoff: đi ngang</span>':'';
+  const cls=w.phase?(w.lean==='sell'?'sell':w.lean==='buy'?'buy':'neu'):'neu';
+  const kn=w.kind==='acc'?(w.re?'tái tích lũy':'tích lũy'):(w.re?'tái phân phối':'phân phối');
+  return `<span class="tg2 ${cls}">Wyckoff: ${kn}${w.phase?' pha '+w.phase:''}</span>`;
+}
+function renderScan(){
+  let rows=S.scan.slice();
+  if(S.filter!=='all') rows=rows.filter(r=>r.now.ok&&r.now.side===S.filter);
+  if(S.sector&&S.sector!=='all') rows=rows.filter(r=>(r.tags||[]).includes(S.sector));
+  if(S.onlyPos) rows=rows.filter(r=>r.st.n>=10&&r.st.exp>0);
+  if(S.onlyWy) rows=rows.filter(r=>r.wy&&r.wy.phase);
+  rows.sort((a,b)=>(b.now.ok-a.now.ok)||(b.now.score-a.now.score)||(b.st.exp-a.st.exp));
+  if(!rows.length){$('rows').innerHTML=`<div class="empty">${S.scanning?'Đang quét…':'Không có mã nào khớp bộ lọc. Thử bỏ bớt điều kiện hoặc đổi khung thời gian.'}</div>`;return;}
+  $('rows').innerHTML=rows.map(r=>{
+    const vd=verdict(r.now),bd=btBadge(r.st,r.oos);
+    const chg=r.chg==null?'':`<span class="${r.chg>=0?'up':'dn'}">${r.chg>=0?'+':''}${r.chg.toFixed(1)}%</span>`;
+    const pct=r.now.ok?r.now.strength:Math.round(r.now.strength*0.6);
+    return `<button class="row" data-sym="${r.sym}">
+      <div class="sym"><b>${r.sym}</b><span class="mut">${((r.tags||[]).filter(x=>x!=='VN30')[0])||(r.tags||[])[0]||''}${(r.tags||[]).includes('VN30')?' · VN30':''}</span><div>${fmt(r.price)} ${chg}</div></div>
+      <div><span class="pill ${vd.cls}">${vd.txt}</span> <span class="meter ${vd.cls}"><i style="width:${pct}%"></i></span>
+        <div class="tags">${wyTag(r.wy)}${r.now.items.map(it=>`<span class="tg2 ${it.pts<0?'neu':r.now.side}">${TYPE_LABEL[it.type]}</span>`).join('')||'<span class="mut" style="font-size:13px">Chưa có chỉ báo nào phát tín hiệu</span>'}</div></div>
+      <div><div>Thắng ${(r.st.wr*100).toFixed(0)}% trên ${r.st.n} lệnh</div><div class="mut">Kỳ vọng ${r.st.n?R2(r.st.exp):'–'}</div><span class="badge ${bd.cls}">${bd.txt}</span></div>
+    </button>`;
+  }).join('');
+}
+async function runScan(){
+  if(S.scanning) return;
+  S.scanning=true;S.scan=[];S.scannedTf=S.tf;
+  const pg=$('prog');pg.hidden=false;pg.firstElementChild.style.width='2%';
+  $('rows').innerHTML='<div class="empty">Đang quét…</div>';
+  const list=await loadTop(500);let done=0;const q=list.slice();
+  const worker=async()=>{
+    while(q.length){
+      const t=q.shift();
+      try{
+        const e=await load(t.sym,S.tf),C=e.C,bars=Math.round(86400000/TFS[S.tf]);
+        const chg=t.chg!=null?t.chg:(C.length>bars?(C[C.length-1].c/C[C.length-1-bars].c-1)*100:null);
+        S.scan.push({sym:t.sym,tags:t.tags,wy:e.A.wy?{kind:e.A.wy.kind,phase:e.A.wy.phase,lean:e.A.wy.lean,re:e.A.wy.re}:null,price:e.live?e.live.c:C[C.length-1].c,chg,now:e.A.now,st:e.A.stats.all,oos:e.A.stats.oos});
+      }catch(err){}
+      done++;pg.firstElementChild.style.width=Math.round(done/list.length*100)+'%';renderScan();
+    }
+  };
+  await Promise.all(Array.from({length:5},worker));
+  S.scanning=false;pg.hidden=true;renderScan();updateSrc();
+}
+
+/* ---------- điều khiển ---------- */
+function updateSrc(){
+  const e=S.cur,demo=e?e.demo:false,s=$('src');
+  s.textContent=!e?'Đang tải…':demo?'Không có dữ liệu':'HOSE · HNX · UPCoM';
+  s.className='src '+(!e?'':demo?'demo':'live');
+  $('banner').hidden=true;
+  $('errWhy').textContent=demo&&e.err?' ('+e.err+')':'';
+}
+function resetView(){
+  const n=S.cur.C.length;V.barW=9;V.end=n-1+16;
+}
+function centerOn(i){
+  const plotW=$('wrap').clientWidth-66;V.end=i+plotW/V.barW*0.35;
+}
+async function showChart(){
+  const sym=S.sym;
+  $('symIn').value=sym;S.cur=null;draw();updateSrc();
+  try{
+    const e=await load(sym,S.tf);
+    if(sym!==S.sym) return;
+    S.cur=e;S.selBar=null;S.selEw=null;
+    S.selSig=e.A.signals.length?e.A.signals[e.A.signals.length-1]:null;
+    resetView();
+  }catch(err){
+    $('aside').innerHTML=`<div class="card"><h3>Không tải được mã ${sym}</h3><p class="note">Chưa có dữ liệu cho mã này ở khung đang chọn (khung giờ có thể thiếu với một số mã). Chỉ xem được các mã trong watchlist.json; thêm mã vào đó rồi chạy lại workflow. Nếu đang mở file trực tiếp từ máy, hãy mở qua link GitHub Pages.</p></div>`;
+    S.cur=null;draw();return;
+  }
+  stamp();updateSrc();renderAside();draw();
+}
+function stamp(){const d=new Date();const u=DATA_T?new Date(DATA_T):d;$('upd').textContent='Dữ liệu '+pad(u.getDate())+'/'+pad(u.getMonth()+1)+' '+pad(u.getHours())+':'+pad(u.getMinutes());}
+/* Làm mới nhanh: chỉ tải ~10 nến mới nhất rồi ghép vào dữ liệu đã có, không tải lại 1000 nến */
+async function refreshCur(){S.cache.delete(S.sym+'|'+S.tf);await showChart();}
+async function refreshNow(){
+  const b=$('refresh');if(b.classList.contains('busy')) return;
+  b.classList.add('busy');b.textContent='Đang làm mới…';netDownUntil=0;lastErr='';
+  try{
+    if(S.tab==='scan'){S.cache.clear();S.scan=[];S.top=null;await runScan();stamp();}
+    else await refreshCur();
+  }finally{b.classList.remove('busy');b.textContent='⟳ Làm mới';}
+}
+function setTab(t){
+  S.tab=t;
+  $('viewChart').hidden=t!=='chart';$('viewScan').hidden=t!=='scan';
+  $('tabChart').setAttribute('aria-selected',t==='chart');$('tabScan').setAttribute('aria-selected',t==='scan');
+  if(t==='chart') requestAnimationFrame(draw);
+  if(t==='scan'&&(!S.scan.length||S.scannedTf!==S.tf)&&!S.scanning) runScan();
+}
+function tfButtons(host){
+  host.innerHTML=Object.keys(TFS).map(k=>`<button class="chip" data-tf="${k}" aria-pressed="${k===S.tf}">${k}</button>`).join(' ');
+}
+function setTf(tf){
+  if(tf===S.tf) return;
+  S.tf=tf;tfButtons($('tfChart'));tfButtons($('tfScan'));
+  if(S.tab==='chart') showChart(); else runScan();
+}
+function buildLayers(){
+  $('layers').innerHTML=LAYERS.map(([k,t])=>`<button class="chip sm" data-layer="${k}" aria-pressed="${!!S.L[k]}">${t}</button>`).join('');
+}
+
+/* tương tác trên biểu đồ */
+function bindChart(){
+  const cv=$('cv'),ptrs=new Map();let drag=null,pinch=null,down=null;
+  const pos=e=>{const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
+  cv.addEventListener('pointerdown',e=>{
+    cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,pos(e));
+    if(ptrs.size===1){const p=pos(e);drag={x:p.x,end:V.end};down={x:p.x,y:p.y,t:Date.now(),moved:0};}
+    else if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,bw:V.barW};drag=null;down=null;}
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(!ptrs.has(e.pointerId)) return;
+    const p=pos(e);ptrs.set(e.pointerId,p);
+    if(ptrs.size===2&&pinch){const [a,b]=[...ptrs.values()];V.barW=cl(pinch.bw*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d,3,32);}
+    else if(drag){V.end=drag.end-(p.x-drag.x)/V.barW;if(down)down.moved=Math.max(down.moved,Math.abs(p.x-down.x)+Math.abs(p.y-down.y));}
+    draw();
+  });
+  const up=e=>{
+    const had=ptrs.delete(e.pointerId);
+    if(had&&down&&down.moved<8&&Date.now()-down.t<600) tap(down.x,down.y);
+    if(ptrs.size<2) pinch=null;
+    if(ptrs.size===0){drag=null;down=null;} else if(ptrs.size===1){const p=[...ptrs.values()][0];drag={x:p.x,end:V.end};down=null;}
+  };
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);pinch=null;drag=null;down=null;});
+  cv.addEventListener('wheel',e=>{e.preventDefault();V.barW=cl(V.barW*(e.deltaY<0?1.12:0.89),3,32);draw();},{passive:false});
+  cv.addEventListener('dblclick',()=>{if(S.cur){resetView();draw();}});
+  $('zIn').onclick=()=>{V.barW=cl(V.barW*1.25,3,32);draw();};
+  $('zOut').onclick=()=>{V.barW=cl(V.barW*0.8,3,32);draw();};
+}
+function tap(px,py_){
+  if(!S.cur) return;
+  let best=null,bd=30;
+  for(const h of S.hits){const d=Math.hypot(h.x-px,h.y-py_);if(d<bd){bd=d;best=h;}}
+  if(best){S.selSig=best.s;S.selBar=best.s.i;renderAside();draw();return;}
+  const plotW=$('wrap').clientWidth-66;
+  if(px>plotW) return;
+  const n=S.cur.C.length;
+  S.selBar=cl(Math.round(V.end+0.5-(plotW-px)/V.barW),0,n-1);
+  draw();
+}
+
+function init(){
+  tfButtons($('tfChart'));tfButtons($('tfScan'));buildLayers();bindChart();
+  $('tabChart').onclick=()=>setTab('chart');$('tabScan').onclick=()=>setTab('scan');
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b) return;
+    if(b.dataset.tf){setTf(b.dataset.tf);}
+    else if(b.dataset.layer){const k=b.dataset.layer;S.L[k]=S.L[k]?0:1;b.setAttribute('aria-pressed',!!S.L[k]);draw();}
+    else if(b.dataset.sig){const s=S.cur.A.signals.find(x=>x.i===+b.dataset.sig);if(s){S.selSig=s;S.selBar=s.i;centerOn(s.i);renderAside();draw();}}
+    else if(b.dataset.sym){S.sym=b.dataset.sym;setTab('chart');showChart();}
+    else if(b.dataset.f){S.filter=b.dataset.f;document.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',x===b));renderScan();}
+  });
+  $('refresh').onclick=refreshNow;
+  $('retry').onclick=()=>{netDownUntil=0;lastErr='';S.cache.clear();S.scan=[];S.scannedTf=null;showChart();if(S.tab==='scan')runScan();};
+  $('onlyPos').onclick=e=>{S.onlyPos=!S.onlyPos;e.currentTarget.setAttribute('aria-pressed',S.onlyPos);renderScan();};
+  $('onlyWy').onclick=e=>{S.onlyWy=!S.onlyWy;e.currentTarget.setAttribute('aria-pressed',S.onlyWy);renderScan();};
+  $('rescan').onclick=()=>{S.cache.clear();S.scan=[];runScan();};
+  const go=()=>{let s=$('symIn').value.trim().toUpperCase().replace(/[^A-Z0-9.\-=]/g,'');if(!s)return;S.sym=s;showChart();};
+  $('symGo').onclick=go;$('symIn').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+  window.addEventListener('resize',draw);
+  if(window.ResizeObserver) new ResizeObserver(()=>draw()).observe($('wrap'));
+  loadTop(25);
+  showChart();
+}
+window.__app={S,V,draw,load,runScan,showChart,renderAside,renderScan,tap};
+init();
+})();
+</script>
+</body>
+</html>

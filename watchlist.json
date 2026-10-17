@@ -1,0 +1,20 @@
+{
+  "_ghi_chu": "Sửa danh sách mã tại đây. Nhóm VN30 tự lấy từ sàn khi chạy workflow; nếu lấy lỗi sẽ dùng danh sách VN30_du_phong bên dưới. Một mã có thể nằm trong nhiều nhóm.",
+  "VN30_du_phong": ["ACB","BCM","BID","BSR","CTG","FPT","GAS","GVR","HDB","HPG","LPB","MBB","MCH","MSN","MWG","SAB","SHB","SSB","SSI","STB","TCB","TCX","VCB","VHM","VIB","VIC","VJC","VNM","VPB","VRE"],
+  "groups": {
+    "VN30": "auto",
+    "Dầu khí": ["GAS","PLX","BSR","PVD","PVS","PVC","OIL","PGD"],
+    "Cảng biển": ["MVN","PHP","GMD","DXP","HAH","VSC","SGP","CDN","TCL"],
+    "Vận tải": ["PVT","PVP","VOS","VTO","VIP","GSP","VJC","HVN","SCS"],
+    "Cao su": ["GVR","DRI","PHR","DPR","TRC","BRC","HRC","DRC","CSM","SRC"],
+    "Phân bón": ["DPM","DCM","BFC","LAS","SFG","VAF","CSV","DDV"],
+    "Bán lẻ": ["MWG","FRT","PNJ","DGW","PET"],
+    "Ngân hàng": ["VCB","BID","CTG","TCB","MBB","VPB","ACB","HDB","STB","SHB","TPB","VIB","LPB","MSB","OCB","SSB","EIB"],
+    "Chứng khoán": ["SSI","VND","VCI","HCM","VIX","SHS","MBS","FTS","BSI","CTS","ORS","TCX"],
+    "Bất động sản": ["VHM","VIC","VRE","NVL","KDH","DXG","DIG","CEO","PDR","NLG","KBC","IDC","SZC","BCM","TCH","HDG"],
+    "Khoáng sản": ["MSR","KSV","BMC","DHM","KSB","NNC"],
+    "Thép": ["HPG","HSG","NKG","SMC","TLH","POM","VGS","TVN","HMC"],
+    "Thủy sản": ["VHC","ANV","FMC","IDI","MPC","CMX","ACL","ABT"],
+    "Dược phẩm": ["DCL","DHG","IMP","TRA","DBD"]
+  }
+}
